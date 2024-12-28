@@ -6,33 +6,33 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div id="auth-overlay" class="overlay">
-        <div class="auth-container">
-            <h2>请输入访问密码</h2>
-            <input type="password" id="password" placeholder="输入密码">
-            <button onclick="validatePassword()">验证</button>
-        </div>
-    </div>
-
     <div class="container" id="main-content">
         <div class="sidebar">
             <div class="section">
                 <h3>数据导入</h3>
-                <button class="action-button" disabled>导入文件</button>
+                <button class="action-button">导入文件</button>
             </div>
             
             <div class="section">
                 <h3>基础数据</h3>
                 <div class="input-group">
                     <label>平均在线人数：</label>
-                    <input type="number" id="average-online" disabled>
+                    <input type="number" id="average-online">
                 </div>
-                <!-- 可以添加更多输入框 -->
+                <div class="input-group">
+                    <label>显示数量：</label>
+                    <div class="checkbox-group">
+                        <input type="radio" id="show10" name="showCount" value="10" checked>
+                        <label for="show10">显示前10个</label>
+                        <input type="radio" id="show20" name="showCount" value="20">
+                        <label for="show20">显示前20个</label>
+                    </div>
+                </div>
             </div>
 
             <div class="section">
                 <h3>数据导出</h3>
-                <button class="action-button" disabled>导出结果</button>
+                <button class="action-button">导出结果</button>
             </div>
         </div>
 
@@ -41,7 +41,95 @@
                 <h2>分析结果</h2>
             </div>
             <div class="content-body">
-                <!-- 这里显示生成的内容 -->
+                <div class="tables-container">
+                    <!-- 综合排名表格 -->
+                    <div class="table-section">
+                        <h3>综合排名</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>排名</th>
+                                    <th>产品名称</th>
+                                    <th>产品ID</th>
+                                    <th>讲解效率分</th>
+                                    <th>曝光点击分</th>
+                                    <th>点击成交分</th>
+                                    <th>成交量分</th>
+                                    <th>总得分</th>
+                                </tr>
+                            </thead>
+                            <tbody id="comprehensive-table">
+                                <!-- 数据将通过JavaScript动态填充 -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 讲解效率排名表格 -->
+                    <div class="table-section">
+                        <h3>讲解效率排名</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>排名</th>
+                                    <th>产品名称</th>
+                                    <th>产品ID</th>
+                                    <th>讲解效率分</th>
+                                    <th>曝光点击分</th>
+                                    <th>点击成交分</th>
+                                    <th>成交量分</th>
+                                    <th>总得分</th>
+                                </tr>
+                            </thead>
+                            <tbody id="efficiency-table">
+                                <!-- 数据将通过JavaScript动态填充 -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 曝光转化排名表格 -->
+                    <div class="table-section">
+                        <h3>曝光转化排名</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>排名</th>
+                                    <th>产品名称</th>
+                                    <th>产品ID</th>
+                                    <th>讲解效率分</th>
+                                    <th>曝光点击分</th>
+                                    <th>点击成交分</th>
+                                    <th>成交量分</th>
+                                    <th>总得分</th>
+                                </tr>
+                            </thead>
+                            <tbody id="exposure-table">
+                                <!-- 数据将通过JavaScript动态填充 -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 成交能力排名表格 -->
+                    <div class="table-section">
+                        <h3>成交能力排名</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>排名</th>
+                                    <th>产品名称</th>
+                                    <th>产品ID</th>
+                                    <th>讲解效率分</th>
+                                    <th>曝光点击分</th>
+                                    <th>点击成交分</th>
+                                    <th>成交量分</th>
+                                    <th>总得分</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transaction-table">
+                                <!-- 数据将通过JavaScript动态填充 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
