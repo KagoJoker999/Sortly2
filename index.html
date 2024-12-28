@@ -4,136 +4,166 @@
     <meta charset="UTF-8">
     <title>数据分析平台</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
-    <div class="container" id="main-content">
-        <div class="sidebar">
-            <div class="section">
-                <h3>数据导入</h3>
-                <button class="action-button">导入文件</button>
+    <!-- 密码验证对话框 -->
+    <div id="password-modal" class="password-modal">
+        <div class="password-content">
+            <h2>请输入访问密码</h2>
+            <div class="password-input-group">
+                <input type="password" id="password-input" placeholder="请输入密码">
+                <button id="submit-password" class="action-button">确认</button>
             </div>
-            
-            <div class="section">
-                <h3>基础数据</h3>
-                <div class="input-group">
-                    <label>平均在线人数：</label>
-                    <input type="number" id="average-online">
-                </div>
-                <div class="input-group">
-                    <label>显示数量：</label>
-                    <div class="checkbox-group">
-                        <input type="radio" id="show10" name="showCount" value="10" checked>
-                        <label for="show10">显示前10个</label>
-                        <input type="radio" id="show20" name="showCount" value="20">
-                        <label for="show20">显示前20个</label>
+        </div>
+    </div>
+
+    <!-- 页面遮罩层 -->
+    <div id="page-mask" class="page-mask"></div>
+
+    <div class="container">
+        <!-- 顶部操作区域 -->
+        <div class="top-section">
+            <div class="operation-panel">
+                <div class="panel-group">
+                    <h3>数据导入</h3>
+                    <div class="upload-area" id="dropZone">
+                        <input type="file" id="fileInput" accept=".xlsx,.xls" style="display: none;">
+                        <div class="upload-text">
+                            <p>拖拽文件到此处或</p>
+                            <button class="action-button" onclick="document.getElementById('fileInput').click()">选择文件</button>
+                        </div>
+                    </div>
+                    <div class="button-row">
+                        <button class="action-button" id="convertFormat" disabled>开始分析排名</button>
                     </div>
                 </div>
-            </div>
 
-            <div class="section">
-                <h3>数据导出</h3>
-                <button class="action-button">导出结果</button>
+                <div class="panel-group">
+                    <h3>分析参数</h3>
+                    <div class="input-row">
+                        <div class="weight-group">
+                            <label>平均在线人数：</label>
+                            <div class="weight-input-group">
+                                <input type="number" id="average-online" class="form-input" min="0" step="1">
+                                <span class="weight-unit">人</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="input-row">
+                        <div class="weight-group">
+                            <label>整场单品成交比例要求：</label>
+                            <div class="weight-input-group">
+                                <input type="number" id="transaction-ratio" class="form-input" min="0" step="0.1" value="10">
+                                <span class="weight-unit">%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="input-row">
+                        <div class="weight-group">
+                            <label>讲解期望成交比例：</label>
+                            <div class="weight-input-group">
+                                <input type="number" id="explanation-ratio" class="form-input" min="0" step="0.1" value="5">
+                                <span class="weight-unit">%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="result-row">
+                        <div class="result-group">
+                            <span>期望每次讲解的成交单量：</span>
+                            <div class="result-value-group">
+                                <span id="expected-sales">0</span>
+                                <span>单</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-group">
+                    <h3>权重编辑</h3>
+                    <div class="weights-container">
+                        <div class="weight-group">
+                            <label>讲解效率分权重：</label>
+                            <div class="weight-input-group">
+                                <input type="number" id="efficiency-weight" class="form-input" value="25" min="0" max="100">
+                                <span class="weight-unit">%</span>
+                            </div>
+                        </div>
+                        <div class="weight-group">
+                            <label>曝光点击分权重：</label>
+                            <div class="weight-input-group">
+                                <input type="number" id="exposure-weight" class="form-input" value="25" min="0" max="100">
+                                <span class="weight-unit">%</span>
+                            </div>
+                        </div>
+                        <div class="weight-group">
+                            <label>点击成交分权重：</label>
+                            <div class="weight-input-group">
+                                <input type="number" id="conversion-weight" class="form-input" value="25" min="0" max="100">
+                                <span class="weight-unit">%</span>
+                            </div>
+                        </div>
+                        <div class="weight-group">
+                            <label>成交件数分权重：</label>
+                            <div class="weight-input-group">
+                                <input type="number" id="transaction-weight" class="form-input" value="25" min="0" max="100">
+                                <span class="weight-unit">%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="main-content">
-            <div class="content-header">
-                <h2>分析结果</h2>
+        <!-- 中间结果展示区域 -->
+        <div class="middle-section">
+            <div class="result-panel">
+                <div class="result-header">
+                    <h2>综合排名</h2>
+                    <div class="radio-group">
+                        <input type="radio" id="show10" name="showCount" value="10" checked>
+                        <label for="show10">前10名</label>
+                        <input type="radio" id="show20" name="showCount" value="20">
+                        <label for="show20">前20名</label>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>排名</th>
+                                <th>产品名称</th>
+                                <th>产品ID</th>
+                                <th>讲解效率分</th>
+                                <th>曝光点击分</th>
+                                <th>点击成交分</th>
+                                <th>成交量分</th>
+                                <th>总得分</th>
+                            </tr>
+                        </thead>
+                        <tbody id="comprehensive-table">
+                            <!-- 数据将通过JavaScript动态填充 -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
-            <div class="content-body">
-                <div class="tables-container">
-                    <!-- 综合排名表格 -->
-                    <div class="table-section">
-                        <h3>综合排名</h3>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>排名</th>
-                                    <th>产品名称</th>
-                                    <th>产品ID</th>
-                                    <th>讲解效率分</th>
-                                    <th>曝光点击分</th>
-                                    <th>点击成交分</th>
-                                    <th>成交量分</th>
-                                    <th>总得分</th>
-                                </tr>
-                            </thead>
-                            <tbody id="comprehensive-table">
-                                <!-- 数据将通过JavaScript动态填充 -->
-                            </tbody>
-                        </table>
-                    </div>
+        </div>
 
-                    <!-- 讲解效率排名表格 -->
-                    <div class="table-section">
-                        <h3>讲解效率排名</h3>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>排名</th>
-                                    <th>产品名称</th>
-                                    <th>产品ID</th>
-                                    <th>讲解效率分</th>
-                                    <th>曝光点击分</th>
-                                    <th>点击成交分</th>
-                                    <th>成交量分</th>
-                                    <th>总得分</th>
-                                </tr>
-                            </thead>
-                            <tbody id="efficiency-table">
-                                <!-- 数据将通过JavaScript动态填充 -->
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- 曝光转化排名表格 -->
-                    <div class="table-section">
-                        <h3>曝光转化排名</h3>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>排名</th>
-                                    <th>产品名称</th>
-                                    <th>产品ID</th>
-                                    <th>讲解效率分</th>
-                                    <th>曝光点击分</th>
-                                    <th>点击成交分</th>
-                                    <th>成交量分</th>
-                                    <th>总得分</th>
-                                </tr>
-                            </thead>
-                            <tbody id="exposure-table">
-                                <!-- 数据将通过JavaScript动态填充 -->
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- 成交能力排名表格 -->
-                    <div class="table-section">
-                        <h3>成交能力排名</h3>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>排名</th>
-                                    <th>产品名称</th>
-                                    <th>产品ID</th>
-                                    <th>讲解效率分</th>
-                                    <th>曝光点击分</th>
-                                    <th>点击成交分</th>
-                                    <th>成交量分</th>
-                                    <th>总得分</th>
-                                </tr>
-                            </thead>
-                            <tbody id="transaction-table">
-                                <!-- 数据将通过JavaScript动态填充 -->
-                            </tbody>
-                        </table>
-                    </div>
+        <!-- 底部数据预览区域 -->
+        <div class="bottom-section">
+            <div class="data-preview-panel">
+                <h2>数据预览</h2>
+                <div id="rawDataContainer">
+                    <!-- 基础数据表格将在这里显示 -->
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- 浮动提示元素 -->
+    <div id="toast" class="toast" style="display: none;"></div>
+
+    <script src="config.js"></script>
     <script src="script.js"></script>
 </body>
 </html> 
