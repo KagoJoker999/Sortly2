@@ -8,6 +8,7 @@
             background-color: #e8f5e9;
             font-family: Arial, sans-serif;
             padding: 20px;
+            margin: 0;
         }
         table {
             width: 500px;
@@ -22,7 +23,6 @@
             color: black;
             text-align: center;
         }
-        /* 密码验证对话框样式 */
         .password-modal {
             position: fixed;
             top: 50%;
@@ -51,7 +51,7 @@
         .password-input-group input {
             flex: 1;
             padding: 10px;
-            border: 1px solid #ccc;
+            border: 1px solid #ddd;
             border-radius: 6px;
             font-size: 14px;
         }
@@ -95,6 +95,9 @@
         .toast.success {
             background-color: rgba(40, 167, 69, 0.95);
         }
+        td.highlighted {
+            color: red;
+        }
     </style>
 </head>
 <body>
@@ -109,18 +112,18 @@
         </div>
     </div>
 
-    <!-- 页面遮罩层 -->
+    <!-- 遮罩层 -->
     <div id="page-mask" class="page-mask"></div>
 
-    <!-- 产品展示表格 -->
+    <!-- 提示框 -->
+    <div id="toast" class="toast"></div>
+
+    <!-- 产品表格 -->
     <table id="productTable">
         <tbody>
             <!-- 产品列表将通过 JavaScript 动态填充 -->
         </tbody>
     </table>
-
-    <!-- 提示框 -->
-    <div id="toast" class="toast"></div>
 
     <script>
         // 显示提示信息
@@ -135,14 +138,27 @@
             }, 3000);
         }
 
+        // 检查登录状态
+        function checkLoginStatus() {
+            const loginTime = localStorage.getItem('loginTime');
+            if (!loginTime) return false;
+
+            const currentTime = new Date().getTime();
+            const timeDiff = currentTime - parseInt(loginTime);
+            const hoursLimit = 48;
+            
+            return timeDiff < hoursLimit * 60 * 60 * 1000;
+        }
+
+        // 保存登录状态
+        function saveLoginStatus() {
+            const currentTime = new Date().getTime();
+            localStorage.setItem('loginTime', currentTime.toString());
+        }
+
         // 验证密码
         async function verifyPassword() {
             try {
-                const loginStatus = checkLoginStatus();
-                if (loginStatus) {
-                    return true;
-                }
-
                 const response = await fetch('./password.txt?' + new Date().getTime());
                 if (!response.ok) {
                     throw new Error('无法获取密码文件');
@@ -156,82 +172,23 @@
             }
         }
 
-        // 检查登录状态
-        function checkLoginStatus() {
-            const loginTime = localStorage.getItem('loginTime');
-            if (!loginTime) return false;
-
-            const currentTime = new Date().getTime();
-            const timeDiff = currentTime - parseInt(loginTime);
-            const hoursLimit = 48;
-            
-            if (timeDiff < hoursLimit * 60 * 60 * 1000) {
-                return true;
-            } else {
-                localStorage.removeItem('loginTime');
-                return false;
-            }
-        }
-
-        // 保存登录状态
-        function saveLoginStatus() {
-            const currentTime = new Date().getTime();
-            localStorage.setItem('loginTime', currentTime.toString());
-        }
-
-        // 处理密码验证
-        async function handlePasswordVerification() {
-            const passwordInput = document.getElementById('password-input');
-            const submitButton = document.getElementById('submit-password');
-            const productTable = document.getElementById('productTable');
-            const passwordModal = document.getElementById('password-modal');
-            const pageMask = document.getElementById('page-mask');
-
-            if (checkLoginStatus()) {
-                passwordModal.style.display = 'none';
-                pageMask.style.display = 'none';
-                productTable.style.display = 'table';
-                return;
-            }
-
-            passwordInput.addEventListener('keypress', async (e) => {
-                if (e.key === 'Enter') {
-                    submitButton.click();
-                }
-            });
-
-            submitButton.addEventListener('click', async () => {
-                const correctPassword = await verifyPassword();
-                if (!correctPassword) return;
-
-                const inputPassword = passwordInput.value.trim();
-                if (inputPassword === correctPassword) {
-                    saveLoginStatus();
-                    passwordModal.style.display = 'none';
-                    pageMask.style.display = 'none';
-                    productTable.style.display = 'table';
-                    showToast('验证成功', 'success');
-                } else {
-                    showToast('密码错误，请重试', 'error');
-                    passwordInput.value = '';
-                    passwordInput.focus();
-                }
-            });
-        }
-
+        // 提取产品名称
         function extractProductName(name) {
             const match = name.match(/「([^」]+)」/);
             return match ? match[1] : name;
         }
 
+        // 显示产品列表
         function displayProducts() {
             const selectedProducts = JSON.parse(localStorage.getItem('selectedProducts') || '[]');
             const productScores = JSON.parse(localStorage.getItem('productScores') || '{}');
+            const highlightedProducts = JSON.parse(localStorage.getItem('highlightedProducts') || '[]');
             
             // 创建包含产品名称和分数的数组
             const productsWithScores = selectedProducts.map(product => ({
                 name: product,
-                score: productScores[product] || 0
+                score: productScores[product] || 0,
+                highlighted: highlightedProducts.includes(product)
             }));
             
             // 按总得分从大到小排序
@@ -244,16 +201,71 @@
                 const row = document.createElement('tr');
                 const cell = document.createElement('td');
                 cell.textContent = extractProductName(product.name);
+                if (product.highlighted) {
+                    cell.classList.add('highlighted');
+                }
                 row.appendChild(cell);
                 tbody.appendChild(row);
+            });
+        }
+
+        // 处理密码验证
+        async function handlePasswordVerification() {
+            const passwordInput = document.getElementById('password-input');
+            const submitButton = document.getElementById('submit-password');
+            const productTable = document.getElementById('productTable');
+            const passwordModal = document.getElementById('password-modal');
+            const pageMask = document.getElementById('page-mask');
+
+            // 检查是否有有效的登录状态
+            if (checkLoginStatus()) {
+                passwordModal.style.display = 'none';
+                pageMask.style.display = 'none';
+                productTable.style.display = 'table';
+                displayProducts();
+                return;
+            }
+
+            // 回车键提交
+            passwordInput.addEventListener('keypress', async (e) => {
+                if (e.key === 'Enter') {
+                    submitButton.click();
+                }
+            });
+
+            submitButton.addEventListener('click', async () => {
+                const correctPassword = await verifyPassword();
+                if (!correctPassword) {
+                    return;
+                }
+
+                const inputPassword = passwordInput.value.trim();
+                if (inputPassword === correctPassword) {
+                    // 密码正确，保存登录状态
+                    saveLoginStatus();
+                    
+                    // 显示界面
+                    passwordModal.style.display = 'none';
+                    pageMask.style.display = 'none';
+                    productTable.style.display = 'table';
+                    displayProducts();
+                    showToast('验证成功', 'success');
+                } else {
+                    // 密码错误
+                    showToast('密码错误，请重试', 'error');
+                    passwordInput.value = '';
+                    passwordInput.focus();
+                }
             });
         }
 
         // 初始化
         document.addEventListener('DOMContentLoaded', () => {
             handlePasswordVerification();
-            displayProducts();
-            setInterval(displayProducts, 1000);
+            // 如果已登录，开始定时更新
+            if (checkLoginStatus()) {
+                setInterval(displayProducts, 1000);
+            }
         });
     </script>
 </body>
