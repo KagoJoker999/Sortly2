@@ -337,7 +337,7 @@ tbody tr:hover {
 }
 
 .weight-input-group .form-input {
-    width: 60px;
+    width: 80px;
     text-align: right;
 }
 
@@ -545,13 +545,15 @@ tbody tr:hover {
 }
 
 .preset-selector select {
-    flex: 1;
+    flex: 3;
 }
 
 #edit-preset {
+    flex: 1;
     padding: 8px 15px;
-    min-width: auto;
+    min-width: 80px;
     white-space: nowrap;
+    width: 80px;
 }
 
 /* 编辑预设对话框样式 */

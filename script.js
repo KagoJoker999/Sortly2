@@ -1,7 +1,13 @@
 // 密码验证相关代码
 async function verifyPassword() {
     try {
-        // 添加随机参数来防止缓存
+        // 检查是否有有效的登录状态
+        const loginStatus = checkLoginStatus();
+        if (loginStatus) {
+            return true;
+        }
+
+        // 如果没有有效的登录状态，则验证密码
         const response = await fetch('password.txt?' + new Date().getTime());
         if (!response.ok) {
             throw new Error('无法获取密码文件');
@@ -15,6 +21,31 @@ async function verifyPassword() {
     }
 }
 
+// 检查登录状态
+function checkLoginStatus() {
+    const loginTime = localStorage.getItem('loginTime');
+    if (!loginTime) return false;
+
+    const currentTime = new Date().getTime();
+    const timeDiff = currentTime - parseInt(loginTime);
+    const hoursLimit = 48;
+    
+    // 检查是否在48小时内
+    if (timeDiff < hoursLimit * 60 * 60 * 1000) {
+        return true;
+    } else {
+        // 清除过期的登录状态
+        localStorage.removeItem('loginTime');
+        return false;
+    }
+}
+
+// 保存登录状态
+function saveLoginStatus() {
+    const currentTime = new Date().getTime();
+    localStorage.setItem('loginTime', currentTime.toString());
+}
+
 // 处理密码验证
 async function handlePasswordVerification() {
     const passwordInput = document.getElementById('password-input');
@@ -26,6 +57,14 @@ async function handlePasswordVerification() {
     // 确保所有元素都存在
     if (!passwordInput || !submitButton || !container || !passwordModal || !pageMask) {
         console.error('找不到必要的页面元素');
+        return;
+    }
+
+    // 检查是否有有效的登录状态
+    if (checkLoginStatus()) {
+        passwordModal.style.display = 'none';
+        pageMask.style.display = 'none';
+        container.style.display = 'flex';
         return;
     }
 
@@ -44,7 +83,10 @@ async function handlePasswordVerification() {
 
         const inputPassword = passwordInput.value.trim();
         if (inputPassword === correctPassword) {
-            // 密码正确
+            // 密码正确，保存登录状态
+            saveLoginStatus();
+            
+            // 显示界面
             passwordModal.style.display = 'none';
             pageMask.style.display = 'none';
             container.style.display = 'flex';
