@@ -999,6 +999,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const presetSelect = document.getElementById('weight-preset');
     const editPresetBtn = document.getElementById('edit-preset');
     
+    // 从本地存储加载预设
+    function loadSavedPresets() {
+        const savedPresets = localStorage.getItem('weightPresets');
+        if (savedPresets) {
+            try {
+                const parsedPresets = JSON.parse(savedPresets);
+                // 更新全局预设对象
+                Object.assign(weightPresets, parsedPresets);
+            } catch (error) {
+                console.error('加载预设失败:', error);
+            }
+        }
+    }
+    
     // 加载预设
     function loadPreset(presetKey) {
         const preset = weightPresets[presetKey];
@@ -1013,7 +1027,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 保存预设
     function savePreset(presetKey, weights) {
         weightPresets[presetKey].weights = weights;
-        // 这里可以添加保存到本地存储的逻辑
+        // 保存到本地存储
         localStorage.setItem('weightPresets', JSON.stringify(weightPresets));
     }
     
@@ -1105,6 +1119,8 @@ document.addEventListener('DOMContentLoaded', function() {
         createPresetEditModal(currentPreset);
     });
     
+    // 初始化时加载保存的预设
+    loadSavedPresets();
     // 初始加载默认预设
     loadPreset(presetSelect.value);
 });

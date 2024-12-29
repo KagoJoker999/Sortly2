@@ -545,7 +545,7 @@ tbody tr:hover {
 }
 
 .preset-selector select {
-    flex: 3;
+    flex: 2;
 }
 
 #edit-preset {
