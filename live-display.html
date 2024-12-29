@@ -3,19 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <title>直播展示页</title>
-    <link rel="stylesheet" href="./styles.css">
     <style>
-        /* 直播展示页特定样式 */
         body {
             background-color: #e8f5e9;
+            font-family: Arial, sans-serif;
             padding: 20px;
         }
-        #productTable {
+        table {
             width: 500px;
             margin: 0 auto;
             border-collapse: collapse;
         }
-        #productTable td {
+        td {
             padding: 10px;
             border: 1px solid #4caf50;
             font-size: 42px;
@@ -23,20 +22,203 @@
             color: black;
             text-align: center;
         }
-        .highlighted {
-            color: red !important;
+        /* 密码验证对话框样式 */
+        .password-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            z-index: 1001;
+            width: 90%;
+            max-width: 400px;
+        }
+        .password-content {
+            text-align: center;
+        }
+        .password-content h2 {
+            margin: 0 0 20px 0;
+            color: #333;
+            font-size: 18px;
+        }
+        .password-input-group {
+            display: flex;
+            gap: 10px;
+        }
+        .password-input-group input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .password-input-group button {
+            padding: 10px 20px;
+            background-color: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .page-mask {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+        }
+        #productTable {
+            display: none;
+        }
+        .toast {
+            position: fixed;
+            left: 50%;
+            top: 30px;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            display: none;
+        }
+        .toast.error {
+            background-color: rgba(220, 53, 69, 0.95);
+        }
+        .toast.success {
+            background-color: rgba(40, 167, 69, 0.95);
         }
     </style>
 </head>
 <body>
+    <!-- 密码验证对话框 -->
+    <div id="password-modal" class="password-modal">
+        <div class="password-content">
+            <h2>请输入访问密码</h2>
+            <div class="password-input-group">
+                <input type="password" id="password-input" placeholder="请输入密码">
+                <button id="submit-password">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页面遮罩层 -->
+    <div id="page-mask" class="page-mask"></div>
+
+    <!-- 产品展示表格 -->
     <table id="productTable">
         <tbody>
             <!-- 产品列表将通过 JavaScript 动态填充 -->
         </tbody>
     </table>
 
-    <script src="./script.js"></script>
+    <!-- 提示框 -->
+    <div id="toast" class="toast"></div>
+
     <script>
+        // 显示提示信息
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.display = 'block';
+            toast.className = 'toast ' + (type || '');
+            
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        // 验证密码
+        async function verifyPassword() {
+            try {
+                const loginStatus = checkLoginStatus();
+                if (loginStatus) {
+                    return true;
+                }
+
+                const response = await fetch('./password.txt?' + new Date().getTime());
+                if (!response.ok) {
+                    throw new Error('无法获取密码文件');
+                }
+                const correctPassword = await response.text();
+                return correctPassword.trim();
+            } catch (error) {
+                console.error('获取密码文件失败:', error);
+                showToast('系统错误，请刷新页面重试', 'error');
+                return null;
+            }
+        }
+
+        // 检查登录状态
+        function checkLoginStatus() {
+            const loginTime = localStorage.getItem('loginTime');
+            if (!loginTime) return false;
+
+            const currentTime = new Date().getTime();
+            const timeDiff = currentTime - parseInt(loginTime);
+            const hoursLimit = 48;
+            
+            if (timeDiff < hoursLimit * 60 * 60 * 1000) {
+                return true;
+            } else {
+                localStorage.removeItem('loginTime');
+                return false;
+            }
+        }
+
+        // 保存登录状态
+        function saveLoginStatus() {
+            const currentTime = new Date().getTime();
+            localStorage.setItem('loginTime', currentTime.toString());
+        }
+
+        // 处理密码验证
+        async function handlePasswordVerification() {
+            const passwordInput = document.getElementById('password-input');
+            const submitButton = document.getElementById('submit-password');
+            const productTable = document.getElementById('productTable');
+            const passwordModal = document.getElementById('password-modal');
+            const pageMask = document.getElementById('page-mask');
+
+            if (checkLoginStatus()) {
+                passwordModal.style.display = 'none';
+                pageMask.style.display = 'none';
+                productTable.style.display = 'table';
+                return;
+            }
+
+            passwordInput.addEventListener('keypress', async (e) => {
+                if (e.key === 'Enter') {
+                    submitButton.click();
+                }
+            });
+
+            submitButton.addEventListener('click', async () => {
+                const correctPassword = await verifyPassword();
+                if (!correctPassword) return;
+
+                const inputPassword = passwordInput.value.trim();
+                if (inputPassword === correctPassword) {
+                    saveLoginStatus();
+                    passwordModal.style.display = 'none';
+                    pageMask.style.display = 'none';
+                    productTable.style.display = 'table';
+                    showToast('验证成功', 'success');
+                } else {
+                    showToast('密码错误，请重试', 'error');
+                    passwordInput.value = '';
+                    passwordInput.focus();
+                }
+            });
+        }
+
         function extractProductName(name) {
             const match = name.match(/「([^」]+)」/);
             return match ? match[1] : name;
@@ -45,13 +227,11 @@
         function displayProducts() {
             const selectedProducts = JSON.parse(localStorage.getItem('selectedProducts') || '[]');
             const productScores = JSON.parse(localStorage.getItem('productScores') || '{}');
-            const highlightedProducts = JSON.parse(localStorage.getItem('highlightedProducts') || '[]');
             
             // 创建包含产品名称和分数的数组
             const productsWithScores = selectedProducts.map(product => ({
                 name: product,
-                score: productScores[product] || 0,
-                highlighted: highlightedProducts.includes(product)
+                score: productScores[product] || 0
             }));
             
             // 按总得分从大到小排序
@@ -64,19 +244,17 @@
                 const row = document.createElement('tr');
                 const cell = document.createElement('td');
                 cell.textContent = extractProductName(product.name);
-                if (product.highlighted) {
-                    cell.classList.add('highlighted');
-                }
                 row.appendChild(cell);
                 tbody.appendChild(row);
             });
         }
 
-        // 初始显示
-        displayProducts();
-        
-        // 每秒更新一次显示
-        setInterval(displayProducts, 1000);
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            handlePasswordVerification();
+            displayProducts();
+            setInterval(displayProducts, 1000);
+        });
     </script>
 </body>
 </html> 
