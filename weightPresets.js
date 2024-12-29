@@ -29,10 +29,10 @@ const weightPresets = {
     custom: {
         name: "自定义",
         weights: {
-            efficiency: 15,
-            exposure: 35,
-            conversion: 35,
-            transaction: 15
+            efficiency: 25,
+            exposure: 25,
+            conversion: 25,
+            transaction: 25
         }
     }
 };
