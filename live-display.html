@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>直播展示页</title>
+    <style>
+        body {
+            background-color: #e8f5e9;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        table {
+            width: 500px;
+            margin: 0 auto;
+            border-collapse: collapse;
+        }
+        td {
+            padding: 10px;
+            border: 1px solid #4caf50;
+            font-size: 21px;
+            font-weight: bold;
+            color: black;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <table id="productTable">
+        <tbody>
+            <!-- 产品列表将通过 JavaScript 动态填充 -->
+        </tbody>
+    </table>
+
+    <script>
+        function extractProductName(name) {
+            const match = name.match(/「([^」]+)」/);
+            return match ? match[1] : name;
+        }
+
+        function displayProducts() {
+            const selectedProducts = JSON.parse(localStorage.getItem('selectedProducts') || '[]');
+            const productScores = JSON.parse(localStorage.getItem('productScores') || '{}');
+            
+            // 创建包含产品名称和分数的数组
+            const productsWithScores = selectedProducts.map(product => ({
+                name: product,
+                score: productScores[product] || 0
+            }));
+            
+            // 按总得分从大到小排序
+            productsWithScores.sort((a, b) => b.score - a.score);
+            
+            const tbody = document.querySelector('#productTable tbody');
+            tbody.innerHTML = '';
+            
+            productsWithScores.forEach(product => {
+                const row = document.createElement('tr');
+                const cell = document.createElement('td');
+                cell.textContent = extractProductName(product.name);
+                row.appendChild(cell);
+                tbody.appendChild(row);
+            });
+        }
+
+        // 初始显示
+        displayProducts();
+        
+        // 每秒更新一次显示
+        setInterval(displayProducts, 1000);
+    </script>
+</body>
+</html> 

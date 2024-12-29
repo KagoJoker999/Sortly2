@@ -350,11 +350,28 @@ tbody tr:hover {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
 }
 
-.result-header h2 {
+.header-left {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.header-left h2 {
     margin: 0;
+}
+
+#updateStatus {
+    margin-left: auto;
+    margin-right: 20px;
+    width: 80px;
+    padding: 4px 8px;
+    font-size: 12px;
+    height: 24px;
+    min-width: unset;
 }
 
 .result-header .radio-group {
@@ -363,7 +380,14 @@ tbody tr:hover {
     align-items: center;
     height: 36px;
     margin: 0;
-} 
+    flex-wrap: nowrap;  /* 防止换行 */
+}
+
+.radio-group label {
+    white-space: nowrap;
+    font-size: 14px;
+    cursor: pointer;
+}
 
 /* 计算结果列的样式 */
 .calculated-score {
@@ -443,7 +467,7 @@ tbody tr:hover {
 }
 
 #expected-sales {
-    color: var(--primary-color);
+    color: var(--text-color);
     font-weight: bold;
     font-size: 14px;
     text-align: right;
@@ -592,4 +616,28 @@ tbody tr:hover {
 
 .preset-edit-buttons button {
     min-width: 80px;
+} 
+
+#showLiveDisplay {
+    background-color: var(--primary-color);
+}
+
+#showLiveDisplay:hover {
+    background-color: #0056b3;
+} 
+
+/* 选中产品的样式 */
+.selected-product {
+    background-color: #e3f2fd !important; /* 浅蓝色背景 */
+}
+
+.product-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+/* 确保选中状态在悬停时保持 */
+.selected-product:hover {
+    background-color: #e3f2fd !important;
 } 

@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>数据分析平台</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="./favicon.png">
+    <link rel="stylesheet" href="./styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -36,6 +37,7 @@
                     </div>
                     <div class="button-row">
                         <button class="action-button" id="convertFormat" disabled>开始分析排名</button>
+                        <button class="action-button" id="showLiveDisplay" onclick="window.open('./live-display.html', '_blank')">直播展示页</button>
                     </div>
                 </div>
 
@@ -131,18 +133,25 @@
         <div class="middle-section">
             <div class="result-panel">
                 <div class="result-header">
-                    <h2>综合排名</h2>
+                    <div class="header-left">
+                        <h2>综合排名</h2>
+                        <button class="action-button" id="updateStatus">更新状态</button>
+                    </div>
                     <div class="radio-group">
                         <input type="radio" id="show10" name="showCount" value="10" checked>
                         <label for="show10">前10名</label>
                         <input type="radio" id="show20" name="showCount" value="20">
                         <label for="show20">前20名</label>
+                        <input type="radio" id="show30" name="showCount" value="30">
+                        <label for="show30">前30名</label>
                     </div>
                 </div>
                 <div class="table-wrapper">
                     <table>
                         <thead>
                             <tr>
+                                <th>选择</th>
+                                <th>高亮</th>
                                 <th>排名</th>
                                 <th>产品名称</th>
                                 <th>产品ID</th>
@@ -175,8 +184,8 @@
     <!-- 浮动提示元素 -->
     <div id="toast" class="toast" style="display: none;"></div>
 
-    <script src="weightPresets.js"></script>
-    <script src="config.js"></script>
-    <script src="script.js"></script>
+    <script src="./weightPresets.js"></script>
+    <script src="./config.js"></script>
+    <script src="./script.js"></script>
 </body>
 </html> 

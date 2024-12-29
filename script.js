@@ -8,7 +8,7 @@ async function verifyPassword() {
         }
 
         // 如果没有有效的登录状态，则验证密码
-        const response = await fetch('password.txt?' + new Date().getTime());
+        const response = await fetch('./password.txt?' + new Date().getTime());
         if (!response.ok) {
             throw new Error('无法获取密码文件');
         }
@@ -111,8 +111,18 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeConvertButton();
     initializeWeightInputs();
     initializeExpectedSales();
+    
+    // 添加更新状态按钮的事件监听
+    document.getElementById('updateStatus').addEventListener('click', () => {
+        updateTableStatus();
+        showToast('状态已更新', 'success');
+    });
+    
     document.querySelectorAll('input[name="showCount"]').forEach(radio => {
-        radio.addEventListener('change', updateTables);
+        radio.addEventListener('change', () => {
+            updateTables();
+            updateTableStatus();
+        });
     });
 });
 
@@ -904,25 +914,15 @@ function initializeWeightInputs() {
 }
 
 function updateTables() {
-    if (!processedData || processedData.length === 0) {
-        console.log('没有可显示的数据，processedData:', processedData);
-        return;
-    }
-
-    const showCount = parseInt(document.querySelector('input[name="showCount"]:checked').value);
-    console.log('要显示的数据条数:', showCount);
+    if (!processedData) return;
     
-    try {
-        // 按总分排序
-        const sortedData = sortByTotal(processedData);
-        console.log('排序后的数据:', sortedData);
-        
-        // 更新综合排名表格
-        updateTable('comprehensive-table', sortedData, showCount);
-    } catch (error) {
-        console.error('更新表格时出错:', error);
-        showToast('更新表格时出错：' + error.message, 'error');
-    }
+    const showCount = document.querySelector('input[name="showCount"]:checked').value;
+    
+    // 更新综合排名表格
+    const sortedByTotal = sortByTotal(processedData);
+    updateTable('comprehensive-table', sortedByTotal, showCount);
+    
+    updateTableStatus(); // 添加这一行，在更新表格后更新状态
 }
 
 function updateTable(tableId, data, limit) {
@@ -944,7 +944,13 @@ function updateTable(tableId, data, limit) {
         const name = item.name || '';
         const truncatedName = name.length > 10 ? name.substring(0, 10) + '...' : name;
         
+        // 为选中的行添加特殊类名
+        row.className = 'product-row';
+        row.dataset.productName = name; // 存储完整产品名称
+        
         row.innerHTML = `
+            <td><input type="checkbox" class="product-checkbox" onchange="handleProductSelection(this)"></td>
+            <td><input type="checkbox" class="highlight-checkbox" onchange="handleProductHighlight(this)"></td>
             <td>${index + 1}</td>
             <td title="${name}">${truncatedName}</td>
             <td>${item.id || ''}</td>
@@ -958,29 +964,76 @@ function updateTable(tableId, data, limit) {
     });
 }
 
+// 处理产品选择
+function handleProductSelection(checkbox) {
+    const row = checkbox.closest('tr');
+    const productName = row.dataset.productName;
+    const scoreCell = row.querySelector('.total-score');
+    const score = parseFloat(scoreCell.textContent);
+    
+    // 更新行的样式
+    if (checkbox.checked) {
+        row.classList.add('selected-product');
+    } else {
+        row.classList.remove('selected-product');
+    }
+    
+    // 更新本地存储中的选中产品列表
+    let selectedProducts = JSON.parse(localStorage.getItem('selectedProducts') || '[]');
+    let productScores = JSON.parse(localStorage.getItem('productScores') || '{}');
+    
+    if (checkbox.checked && !selectedProducts.includes(productName)) {
+        selectedProducts.push(productName);
+        productScores[productName] = score; // 保存产品分数
+    } else if (!checkbox.checked) {
+        selectedProducts = selectedProducts.filter(name => name !== productName);
+        delete productScores[productName]; // 删除产品分数
+    }
+    
+    localStorage.setItem('selectedProducts', JSON.stringify(selectedProducts));
+    localStorage.setItem('productScores', JSON.stringify(productScores)); // 保存分数信息
+}
+
+// 处理产品高亮
+function handleProductHighlight(checkbox) {
+    const row = checkbox.closest('tr');
+    const productName = row.dataset.productName;
+    
+    // 更新本地存储中的高亮产品列表
+    let highlightedProducts = JSON.parse(localStorage.getItem('highlightedProducts') || '[]');
+    
+    if (checkbox.checked && !highlightedProducts.includes(productName)) {
+        highlightedProducts.push(productName);
+    } else if (!checkbox.checked) {
+        highlightedProducts = highlightedProducts.filter(name => name !== productName);
+    }
+    
+    localStorage.setItem('highlightedProducts', JSON.stringify(highlightedProducts));
+}
+
 // 排序函数
 function sortByTotal(data) {
     // 先过滤掉不需要的产品，再按总分排序
     return [...data]
-        .filter(item => !item.name.includes('泡菜国手工发夹发饰发'))
+        .filter(item => item && item.name && typeof item.name === 'string' && !item.name.includes('泡菜国手工发夹发饰发'))
         .sort((a, b) => b.rankingScore - a.rankingScore);
 }
 
 function sortByEfficiency(data) {
     return [...data]
-        .filter(item => !item.name.includes('泡菜国手工发夹发饰发'))
+        .filter(item => item && item.name && typeof item.name === 'string' && !item.name.includes('泡菜国手工发夹发饰发'))
         .sort((a, b) => b.efficiencyScore - a.efficiencyScore);
 }
 
 function sortByExposure(data) {
     return [...data]
-        .filter(item => !item.name.includes('泡菜国手工发夹发饰发'))
+        .filter(item => item && item.name && typeof item.name === 'string' && !item.name.includes('泡菜国手工发夹发饰发'))
         .sort((a, b) => b.exposureScore - a.exposureScore);
 }
 
 function sortByTransaction(data) {
     return [...data]
-        .filter(item => !item.name.includes('泡菜国手工发夹发饰发'))
+        .filter(item => item && item.name && typeof item.name === 'string' && !item.name.includes('泡菜国手工发夹发饰发'))
         .sort((a, b) => b.transactionScore - a.transactionScore);
 }
 
@@ -1125,5 +1178,49 @@ document.addEventListener('DOMContentLoaded', function() {
     loadPreset(presetSelect.value);
 });
 
+// 更新表格中的选择和高亮状态
+function updateTableStatus() {
+    const selectedProducts = JSON.parse(localStorage.getItem('selectedProducts') || '[]');
+    const highlightedProducts = JSON.parse(localStorage.getItem('highlightedProducts') || '[]');
+    
+    // 获取所有产品行
+    const rows = document.querySelectorAll('.product-row');
+    
+    rows.forEach(row => {
+        const productName = row.dataset.productName;
+        const selectCheckbox = row.querySelector('.product-checkbox');
+        const highlightCheckbox = row.querySelector('.highlight-checkbox');
+        
+        // 更新选择状态
+        if (selectCheckbox) {
+            selectCheckbox.checked = selectedProducts.includes(productName);
+            if (selectCheckbox.checked) {
+                row.classList.add('selected-product');
+            } else {
+                row.classList.remove('selected-product');
+            }
+        }
+        
+        // 更新高亮状态
+        if (highlightCheckbox) {
+            highlightCheckbox.checked = highlightedProducts.includes(productName);
+        }
+    });
+}
+
 // 初始化表格
 updateTables(); 
+
+async function processExcelFile(file, averageOnline, transactionRatio) {
+    try {
+        const data = await readExcelFile(file);
+        processedData = calculateScores(data, averageOnline, transactionRatio);
+        updateTables();
+        updateTableStatus();
+        showToast('分析完成', 'success');
+    } catch (error) {
+        console.error('处理文件时出错:', error);
+        showToast('处理文件时出错', 'error');
+        throw error;
+    }
+} 
