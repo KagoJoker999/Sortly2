@@ -210,7 +210,7 @@ function initializeConvertButton() {
             if (fileExt === '.xlsx' || fileExt === '.xls') {
                 data = await readExcel(selectedFile);
             } else {
-                showToast('不支持的文件��式，请上传Excel文件！', 'error');
+                showToast('不支持的文件格式，请上传Excel文件！', 'error');
                 return;
             }
             
@@ -250,7 +250,7 @@ function initializeAnalysisButton() {
         }
 
         try {
-            showToast('正在计算得��...');
+            showToast('正在计算得分...');
             calculateAndDisplayScores();
             showToast('得分计算完成', 'success');
         } catch (error) {
@@ -624,7 +624,7 @@ async function readExcel(file) {
                     '点击成交率': ['商品点击-成交转化率（人数）', '商品点击-成交转化率', '点击成交率']
                 };
 
-                // 创建列名索引��射
+                // 创建列名索引映射
                 const columnIndexMap = {};
                 for (const [key, aliases] of Object.entries(columnMap)) {
                     const index = headers.findIndex(h => aliases.includes(h));
@@ -654,7 +654,7 @@ async function readExcel(file) {
                 reject(new Error('Excel文件格式错误'));
             }
         };
-        reader.onerror = () => reject(new Error('��件读取错误'));
+        reader.onerror = () => reject(new Error('文件读取错误'));
         reader.readAsArrayBuffer(file);
     });
 }
@@ -951,6 +951,121 @@ function initializeExpectedSales() {
     // 初始计算一次
     calculateExpectedSales();
 }
+
+// 权重预设功能
+document.addEventListener('DOMContentLoaded', function() {
+    const presetSelect = document.getElementById('weight-preset');
+    const editPresetBtn = document.getElementById('edit-preset');
+    
+    // 加载预设
+    function loadPreset(presetKey) {
+        const preset = weightPresets[presetKey];
+        if (!preset) return;
+        
+        document.getElementById('efficiency-weight').value = preset.weights.efficiency;
+        document.getElementById('exposure-weight').value = preset.weights.exposure;
+        document.getElementById('conversion-weight').value = preset.weights.conversion;
+        document.getElementById('transaction-weight').value = preset.weights.transaction;
+    }
+    
+    // 保存预设
+    function savePreset(presetKey, weights) {
+        weightPresets[presetKey].weights = weights;
+        // 这里可以添加保存到本地存储的逻辑
+        localStorage.setItem('weightPresets', JSON.stringify(weightPresets));
+    }
+    
+    // 创建编辑预设对话框
+    function createPresetEditModal(presetKey) {
+        const modal = document.createElement('div');
+        modal.className = 'preset-edit-modal';
+        const preset = weightPresets[presetKey];
+        
+        modal.innerHTML = `
+            <div class="preset-edit-content">
+                <h2>编辑${preset.name}预设</h2>
+                <div class="weight-group">
+                    <label>讲解效率分权重：</label>
+                    <div class="weight-input-group">
+                        <input type="number" class="form-input" id="edit-efficiency" value="${preset.weights.efficiency}" min="0" max="100">
+                        <span class="weight-unit">%</span>
+                    </div>
+                </div>
+                <div class="weight-group">
+                    <label>曝光点击分权重：</label>
+                    <div class="weight-input-group">
+                        <input type="number" class="form-input" id="edit-exposure" value="${preset.weights.exposure}" min="0" max="100">
+                        <span class="weight-unit">%</span>
+                    </div>
+                </div>
+                <div class="weight-group">
+                    <label>点击成交分权重：</label>
+                    <div class="weight-input-group">
+                        <input type="number" class="form-input" id="edit-conversion" value="${preset.weights.conversion}" min="0" max="100">
+                        <span class="weight-unit">%</span>
+                    </div>
+                </div>
+                <div class="weight-group">
+                    <label>成交件数分权重：</label>
+                    <div class="weight-input-group">
+                        <input type="number" class="form-input" id="edit-transaction" value="${preset.weights.transaction}" min="0" max="100">
+                        <span class="weight-unit">%</span>
+                    </div>
+                </div>
+                <div class="preset-edit-buttons">
+                    <button class="action-button" id="cancel-edit">取消</button>
+                    <button class="action-button" id="save-preset">保存</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        const mask = document.getElementById('page-mask');
+        mask.style.display = 'block';
+        
+        // 绑定事件
+        document.getElementById('cancel-edit').onclick = () => {
+            modal.remove();
+            mask.style.display = 'none';
+        };
+        
+        document.getElementById('save-preset').onclick = () => {
+            const newWeights = {
+                efficiency: parseInt(document.getElementById('edit-efficiency').value),
+                exposure: parseInt(document.getElementById('edit-exposure').value),
+                conversion: parseInt(document.getElementById('edit-conversion').value),
+                transaction: parseInt(document.getElementById('edit-transaction').value)
+            };
+            
+            // 验证权重总和是否为100
+            const sum = Object.values(newWeights).reduce((a, b) => a + b, 0);
+            if (sum !== 100) {
+                showToast('权重总和必须为100%', 'error');
+                return;
+            }
+            
+            savePreset(presetKey, newWeights);
+            loadPreset(presetKey);
+            modal.remove();
+            mask.style.display = 'none';
+            showToast('预设保存成功', 'success');
+        };
+    }
+    
+    // 绑定预设选择事件
+    presetSelect.addEventListener('change', function() {
+        loadPreset(this.value);
+    });
+    
+    // 绑定编辑按钮事件
+    editPresetBtn.addEventListener('click', function() {
+        const currentPreset = presetSelect.value;
+        createPresetEditModal(currentPreset);
+    });
+    
+    // 初始加载默认预设
+    loadPreset(presetSelect.value);
+});
 
 // 初始化表格
 updateTables(); 

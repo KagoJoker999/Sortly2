@@ -81,6 +81,18 @@
 
                 <div class="panel-group">
                     <h3>权重编辑</h3>
+                    <div class="weight-preset-section">
+                        <div class="preset-selector">
+                            <label for="weight-preset">权重预设：</label>
+                            <select id="weight-preset" class="form-input">
+                                <option value="exposureConversion">曝光成交率优先</option>
+                                <option value="transactionCount">成交件数优先</option>
+                                <option value="efficiency">讲解效率优先</option>
+                                <option value="custom">自定义</option>
+                            </select>
+                            <button id="edit-preset" class="action-button">编辑预设</button>
+                        </div>
+                    </div>
                     <div class="weights-container">
                         <div class="weight-group">
                             <label>讲解效率分权重：</label>
@@ -163,6 +175,7 @@
     <!-- 浮动提示元素 -->
     <div id="toast" class="toast" style="display: none;"></div>
 
+    <script src="/Kagojoker999.zhihu1.github.io/weightPresets.js"></script>
     <script src="/Kagojoker999.zhihu1.github.io/config.js"></script>
     <script src="/Kagojoker999.zhihu1.github.io/script.js"></script>
 </body>
