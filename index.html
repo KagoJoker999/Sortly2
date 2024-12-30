@@ -6,8 +6,25 @@
     <link rel="icon" type="image/png" href="./favicon.png">
     <link rel="stylesheet" href="./styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        /* 版本号样式 */
+        .version-tag {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 1002;
+        }
+    </style>
 </head>
 <body>
+    <!-- 版本号标签 -->
+    <div class="version-tag">v1.0.1</div>
+
     <!-- 密码验证对话框 -->
     <div id="password-modal" class="password-modal">
         <div class="password-content">
