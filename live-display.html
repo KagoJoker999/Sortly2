@@ -115,7 +115,7 @@
 </head>
 <body>
     <!-- 版本号标签 -->
-    <div class="version-tag">v1.0.3</div>
+    <div class="version-tag">v1.0.4</div>
 
     <!-- 密码验证对话框 -->
     <div id="password-modal" class="password-modal">
@@ -205,10 +205,10 @@
         async function fetchFromEdgeConfig() {
             try {
                 console.log('正在从 Edge Config 获取数据...');
-                const response = await fetch(`${edgeConfigUrl}/items/${edgeConfigId}`, {
+                const response = await fetch('/api/edge-config-proxy', {
+                    method: 'GET',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${edgeConfigId}`
+                        'Content-Type': 'application/json'
                     }
                 });
                 
@@ -230,11 +230,10 @@
         async function updateEdgeConfig(data) {
             try {
                 console.log('正在更新 Edge Config 数据...');
-                const response = await fetch(`${edgeConfigUrl}/items/${edgeConfigId}`, {
-                    method: 'PUT',
+                const response = await fetch('/api/edge-config-proxy', {
+                    method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${edgeConfigId}`
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify(data)
                 });
