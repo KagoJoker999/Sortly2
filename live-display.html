@@ -189,7 +189,11 @@
         // 从 Edge Config 获取数据
         async function fetchFromEdgeConfig() {
             try {
-                const response = await fetch(`${edgeConfigUrl}/items/${edgeConfigId}`);
+                const response = await fetch(`${edgeConfigUrl}/items/${edgeConfigId}`, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
                 if (!response.ok) {
                     throw new Error('无法从 Edge Config 获取数据');
                 }
@@ -204,15 +208,20 @@
         // 更新 Edge Config 数据
         async function updateEdgeConfig(data) {
             try {
-                await fetch(`${edgeConfigUrl}/items/${edgeConfigId}`, {
+                const response = await fetch(`${edgeConfigUrl}/items/${edgeConfigId}`, {
                     method: 'PUT',
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify(data)
                 });
+                
+                if (!response.ok) {
+                    throw new Error('更新 Edge Config 失败');
+                }
             } catch (error) {
                 console.error('更新 Edge Config 数据失败:', error);
+                showToast('同步失败，请刷新页面重试', 'error');
             }
         }
 
