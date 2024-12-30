@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>直播展示页</title>
+    <script src="version.js"></script>
     <script src="https://edge-config.vercel.com/utils/live.js"></script>
     <style>
         body {
@@ -100,6 +101,7 @@
             color: red;
         }
         /* 版本号样式 */
+        .version-tag {
             position: fixed;
             top: 10px;
             left: 10px;
@@ -114,6 +116,7 @@
 </head>
 <body>
     <!-- 版本号标签 -->
+    <div class="version-tag"></div>
 
     <!-- 密码验证对话框 -->
     <div id="password-modal" class="password-modal">
