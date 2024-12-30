@@ -145,6 +145,10 @@
         // 创建广播频道用于同一浏览器不同标签页的同步
         const broadcastChannel = new BroadcastChannel('live-ranking-sync');
         
+        // 创建 Vercel Edge Config 连接
+        const edgeConfigUrl = 'https://edge-config.vercel.com';
+        const edgeConfigId = 'ecfg_mai3l1prmiie8g0zuogaovo7zz73';
+        
         // 显示提示信息
         function showToast(message, type = 'info') {
             const toast = document.getElementById('toast');
@@ -197,36 +201,115 @@
             return match ? match[1] : name;
         }
 
-        // 显示产品列表
-        function displayProducts() {
-            // 从本地存储获取数据
-            const selectedProducts = JSON.parse(localStorage.getItem('selectedProducts') || '[]');
-            const productScores = JSON.parse(localStorage.getItem('productScores') || '{}');
-            const highlightedProducts = JSON.parse(localStorage.getItem('highlightedProducts') || '[]');
-            
-            // 创建包含产品名称和分数的数组
-            const productsWithScores = selectedProducts.map(product => ({
-                name: product,
-                score: productScores[product] || 0,
-                highlighted: highlightedProducts.includes(product)
-            }));
-            
-            // 按总得分从大到小排序
-            productsWithScores.sort((a, b) => b.score - a.score);
-            
-            const tbody = document.querySelector('#productTable tbody');
-            tbody.innerHTML = '';
-            
-            productsWithScores.forEach(product => {
-                const row = document.createElement('tr');
-                const cell = document.createElement('td');
-                cell.textContent = extractProductName(product.name);
-                if (product.highlighted) {
-                    cell.classList.add('highlighted');
+        // 从 Edge Config 获取数据
+        async function fetchFromEdgeConfig() {
+            try {
+                console.log('正在从 Edge Config 获取数据...');
+                const response = await fetch(`${edgeConfigUrl}/items/${edgeConfigId}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${edgeConfigId}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Edge Config 请求失败: ${response.status}`);
                 }
-                row.appendChild(cell);
-                tbody.appendChild(row);
-            });
+                
+                const data = await response.json();
+                console.log('成功获取数据:', data);
+                return data;
+            } catch (error) {
+                console.error('获取 Edge Config 数据失败:', error);
+                showToast('数据同步失败，使用本地数据', 'error');
+                return null;
+            }
+        }
+
+        // 更新 Edge Config 数据
+        async function updateEdgeConfig(data) {
+            try {
+                console.log('正在更新 Edge Config 数据...');
+                const response = await fetch(`${edgeConfigUrl}/items/${edgeConfigId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${edgeConfigId}`
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`更新 Edge Config 失败: ${response.status}`);
+                }
+                
+                console.log('数据更新成功');
+            } catch (error) {
+                console.error('更新 Edge Config 数据失败:', error);
+                showToast('同步失败，请刷新页面重试', 'error');
+            }
+        }
+
+        // 显示产品列表
+        async function displayProducts() {
+            try {
+                console.log('开始更新显示...');
+                // 尝试从 Edge Config 获取数据
+                const edgeData = await fetchFromEdgeConfig();
+                
+                // 如果无法获取 Edge Config 数据，则使用本地数据
+                const selectedProducts = edgeData?.selectedProducts || JSON.parse(localStorage.getItem('selectedProducts') || '[]');
+                const productScores = edgeData?.productScores || JSON.parse(localStorage.getItem('productScores') || '{}');
+                const highlightedProducts = edgeData?.highlightedProducts || JSON.parse(localStorage.getItem('highlightedProducts') || '[]');
+                
+                console.log('当前数据:', {
+                    selectedProducts,
+                    productScores,
+                    highlightedProducts
+                });
+                
+                // 更新本地存储
+                localStorage.setItem('selectedProducts', JSON.stringify(selectedProducts));
+                localStorage.setItem('productScores', JSON.stringify(productScores));
+                localStorage.setItem('highlightedProducts', JSON.stringify(highlightedProducts));
+                
+                // 创建包含产品名称和分数的数组
+                const productsWithScores = selectedProducts.map(product => ({
+                    name: product,
+                    score: productScores[product] || 0,
+                    highlighted: highlightedProducts.includes(product)
+                }));
+                
+                // 按总得分从大到小排序
+                productsWithScores.sort((a, b) => b.score - a.score);
+                
+                const tbody = document.querySelector('#productTable tbody');
+                tbody.innerHTML = '';
+                
+                if (productsWithScores.length === 0) {
+                    console.log('没有产品数据');
+                    const row = document.createElement('tr');
+                    const cell = document.createElement('td');
+                    cell.textContent = '暂无数据';
+                    cell.style.color = '#666';
+                    row.appendChild(cell);
+                    tbody.appendChild(row);
+                } else {
+                    productsWithScores.forEach(product => {
+                        const row = document.createElement('tr');
+                        const cell = document.createElement('td');
+                        cell.textContent = extractProductName(product.name);
+                        if (product.highlighted) {
+                            cell.classList.add('highlighted');
+                        }
+                        row.appendChild(cell);
+                        tbody.appendChild(row);
+                    });
+                }
+            } catch (error) {
+                console.error('显示产品列表时出错:', error);
+                showToast('显示数据时出错，请刷新页面', 'error');
+            }
         }
 
         // 处理密码验证
@@ -242,7 +325,7 @@
                 passwordModal.style.display = 'none';
                 pageMask.style.display = 'none';
                 productTable.style.display = 'table';
-                displayProducts();
+                await displayProducts();
                 return;
             }
 
@@ -268,7 +351,7 @@
                     passwordModal.style.display = 'none';
                     pageMask.style.display = 'none';
                     productTable.style.display = 'table';
-                    displayProducts();
+                    await displayProducts();
                     showToast('验证成功', 'success');
                 } else {
                     // 密码错误
@@ -281,22 +364,29 @@
 
         // 初始化
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('页面初始化...');
             handlePasswordVerification();
             
             // 监听来自其他标签页的消息
-            broadcastChannel.onmessage = (event) => {
+            broadcastChannel.onmessage = async (event) => {
+                console.log('收到广播消息:', event.data);
                 const data = event.data;
+                // 更新 Edge Config
+                await updateEdgeConfig(data);
                 // 更新本地存储
                 localStorage.setItem('selectedProducts', JSON.stringify(data.selectedProducts));
                 localStorage.setItem('productScores', JSON.stringify(data.productScores));
                 localStorage.setItem('highlightedProducts', JSON.stringify(data.highlightedProducts));
                 if (checkLoginStatus()) {
-                    displayProducts();
+                    await displayProducts();
                 }
             };
             
             // 如果已登录，开始定时更新
             if (checkLoginStatus()) {
+                console.log('用户已登录，开始定时更新');
+                // 立即执行一次
+                displayProducts();
                 // 每秒更新一次显示
                 setInterval(displayProducts, 1000);
             }
