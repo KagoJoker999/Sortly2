@@ -15,8 +15,5 @@
             "src": "/(.*)",
             "dest": "/$1"
         }
-    ],
-    "edge-config": {
-        "runtime": "edge-config@1"
-    }
+    ]
 } 
