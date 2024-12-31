@@ -3,14 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <title>直播展示页</title>
-    <script src="version.js"></script>
-    <script src="https://edge-config.vercel.com/utils/live.js"></script>
     <style>
         body {
             background-color: #e8f5e9;
             font-family: Arial, sans-serif;
             padding: 20px;
-            margin: 0;
         }
         table {
             width: 500px;
@@ -20,122 +17,14 @@
         td {
             padding: 10px;
             border: 1px solid #4caf50;
-            font-size: 42px;
+            font-size: 21px;
             font-weight: bold;
             color: black;
             text-align: center;
         }
-        .password-modal {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-            z-index: 1001;
-            width: 90%;
-            max-width: 400px;
-        }
-        .password-content {
-            text-align: center;
-        }
-        .password-content h2 {
-            margin: 0 0 20px 0;
-            color: #333;
-            font-size: 18px;
-        }
-        .password-input-group {
-            display: flex;
-            gap: 10px;
-        }
-        .password-input-group input {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-        .password-input-group button {
-            padding: 10px 20px;
-            background-color: #007AFF;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-        .page-mask {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(4px);
-            z-index: 1000;
-        }
-        #productTable {
-            display: none;
-        }
-        .toast {
-            position: fixed;
-            left: 50%;
-            top: 30px;
-            transform: translateX(-50%);
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 14px;
-            color: white;
-            background-color: rgba(0, 0, 0, 0.8);
-            z-index: 1000;
-            display: none;
-        }
-        .toast.error {
-            background-color: rgba(220, 53, 69, 0.95);
-        }
-        .toast.success {
-            background-color: rgba(40, 167, 69, 0.95);
-        }
-        td.highlighted {
-            color: red;
-        }
-        /* 版本号样式 */
-        .version-tag {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            background-color: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            z-index: 1002;
-        }
     </style>
 </head>
 <body>
-    <!-- 版本号标签 -->
-    <div class="version-tag"></div>
-
-    <!-- 密码验证对话框 -->
-    <div id="password-modal" class="password-modal">
-        <div class="password-content">
-            <h2>请输入访问密码</h2>
-            <div class="password-input-group">
-                <input type="password" id="password-input" placeholder="请输入密码">
-                <button id="submit-password">确认</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 遮罩层 -->
-    <div id="page-mask" class="page-mask"></div>
-
-    <!-- 提示框 -->
-    <div id="toast" class="toast"></div>
-
-    <!-- 产品表格 -->
     <table id="productTable">
         <tbody>
             <!-- 产品列表将通过 JavaScript 动态填充 -->
@@ -143,254 +32,41 @@
     </table>
 
     <script>
-        // 创建广播频道用于同一浏览器不同标签页的同步
-        const broadcastChannel = new BroadcastChannel('live-ranking-sync');
-        
-        // 创建 Vercel Edge Config 连接
-        const edgeConfigUrl = 'https://edge-config.vercel.com';
-        const edgeConfigId = 'ecfg_mai3l1prmiie8g0zuogaovo7zz73';
-        
-        // 显示提示信息
-        function showToast(message, type = 'info') {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.style.display = 'block';
-            toast.className = 'toast ' + (type || '');
-            
-            setTimeout(() => {
-                toast.style.display = 'none';
-            }, 3000);
-        }
-
-        // 检查登录状态
-        function checkLoginStatus() {
-            const loginTime = localStorage.getItem('loginTime');
-            if (!loginTime) return false;
-
-            const currentTime = new Date().getTime();
-            const timeDiff = currentTime - parseInt(loginTime);
-            const hoursLimit = 48;
-            
-            return timeDiff < hoursLimit * 60 * 60 * 1000;
-        }
-
-        // 保存登录状态
-        function saveLoginStatus() {
-            const currentTime = new Date().getTime();
-            localStorage.setItem('loginTime', currentTime.toString());
-        }
-
-        // 验证密码
-        async function verifyPassword() {
-            try {
-                const response = await fetch('./password.txt?' + new Date().getTime());
-                if (!response.ok) {
-                    throw new Error('无法获取密码文件');
-                }
-                const correctPassword = await response.text();
-                return correctPassword.trim();
-            } catch (error) {
-                console.error('获取密码文件失败:', error);
-                showToast('系统错误，请刷新页面重试', 'error');
-                return null;
-            }
-        }
-
-        // 提取产品名称
         function extractProductName(name) {
             const match = name.match(/「([^」]+)」/);
             return match ? match[1] : name;
         }
 
-        // 从 Edge Config 获取数据
-        async function fetchFromEdgeConfig() {
-            try {
-                console.log('正在从 Edge Config 获取数据...');
-                const response = await fetch('/api/edge-config-proxy', {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`Edge Config 请求失败: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                console.log('成功获取数据:', data);
-                return data;
-            } catch (error) {
-                console.error('获取 Edge Config 数据失败:', error);
-                showToast('数据同步失败，使用本地数据', 'error');
-                return null;
-            }
-        }
-
-        // 更新 Edge Config 数据
-        async function updateEdgeConfig(data) {
-            try {
-                console.log('正在更新 Edge Config 数据...');
-                const response = await fetch('/api/edge-config-proxy', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`更新 Edge Config 失败: ${response.status}`);
-                }
-                
-                console.log('数据更新成功');
-            } catch (error) {
-                console.error('更新 Edge Config 数据失败:', error);
-                showToast('同步失败，请刷新页面重试', 'error');
-            }
-        }
-
-        // 显示产品列表
-        async function displayProducts() {
-            try {
-                console.log('开始更新显示...');
-                // 尝试从 Edge Config 获取数据
-                const edgeData = await fetchFromEdgeConfig();
-                
-                // 如果无法获取 Edge Config 数据，则使用本地数据
-                const selectedProducts = edgeData?.selectedProducts || JSON.parse(localStorage.getItem('selectedProducts') || '[]');
-                const productScores = edgeData?.productScores || JSON.parse(localStorage.getItem('productScores') || '{}');
-                const highlightedProducts = edgeData?.highlightedProducts || JSON.parse(localStorage.getItem('highlightedProducts') || '[]');
-                
-                console.log('当前数据:', {
-                    selectedProducts,
-                    productScores,
-                    highlightedProducts
-                });
-                
-                // 更新本地存储
-                localStorage.setItem('selectedProducts', JSON.stringify(selectedProducts));
-                localStorage.setItem('productScores', JSON.stringify(productScores));
-                localStorage.setItem('highlightedProducts', JSON.stringify(highlightedProducts));
-                
-                // 创建包含产品名称和分数的数组
-                const productsWithScores = selectedProducts.map(product => ({
-                    name: product,
-                    score: productScores[product] || 0,
-                    highlighted: highlightedProducts.includes(product)
-                }));
-                
-                // 按总得分从大到小排序
-                productsWithScores.sort((a, b) => b.score - a.score);
-                
-                const tbody = document.querySelector('#productTable tbody');
-                tbody.innerHTML = '';
-                
-                if (productsWithScores.length === 0) {
-                    console.log('没有产品数据');
-                    const row = document.createElement('tr');
-                    const cell = document.createElement('td');
-                    cell.textContent = '暂无数据';
-                    cell.style.color = '#666';
-                    row.appendChild(cell);
-                    tbody.appendChild(row);
-                } else {
-                    productsWithScores.forEach(product => {
-                        const row = document.createElement('tr');
-                        const cell = document.createElement('td');
-                        cell.textContent = extractProductName(product.name);
-                        if (product.highlighted) {
-                            cell.classList.add('highlighted');
-                        }
-                        row.appendChild(cell);
-                        tbody.appendChild(row);
-                    });
-                }
-            } catch (error) {
-                console.error('显示产品列表时出错:', error);
-                showToast('显示数据时出错，请刷新页面', 'error');
-            }
-        }
-
-        // 处理密码验证
-        async function handlePasswordVerification() {
-            const passwordInput = document.getElementById('password-input');
-            const submitButton = document.getElementById('submit-password');
-            const productTable = document.getElementById('productTable');
-            const passwordModal = document.getElementById('password-modal');
-            const pageMask = document.getElementById('page-mask');
-
-            // 检查是否有有效的登录状态
-            if (checkLoginStatus()) {
-                passwordModal.style.display = 'none';
-                pageMask.style.display = 'none';
-                productTable.style.display = 'table';
-                await displayProducts();
-                return;
-            }
-
-            // 回车键提交
-            passwordInput.addEventListener('keypress', async (e) => {
-                if (e.key === 'Enter') {
-                    submitButton.click();
-                }
-            });
-
-            submitButton.addEventListener('click', async () => {
-                const correctPassword = await verifyPassword();
-                if (!correctPassword) {
-                    return;
-                }
-
-                const inputPassword = passwordInput.value.trim();
-                if (inputPassword === correctPassword) {
-                    // 密码正确，保存登录状态
-                    saveLoginStatus();
-                    
-                    // 显示界面
-                    passwordModal.style.display = 'none';
-                    pageMask.style.display = 'none';
-                    productTable.style.display = 'table';
-                    await displayProducts();
-                    showToast('验证成功', 'success');
-                } else {
-                    // 密码错误
-                    showToast('密码错误，请重试', 'error');
-                    passwordInput.value = '';
-                    passwordInput.focus();
-                }
+        function displayProducts() {
+            const selectedProducts = JSON.parse(localStorage.getItem('selectedProducts') || '[]');
+            const productScores = JSON.parse(localStorage.getItem('productScores') || '{}');
+            
+            // 创建包含产品名称和分数的数组
+            const productsWithScores = selectedProducts.map(product => ({
+                name: product,
+                score: productScores[product] || 0
+            }));
+            
+            // 按总得分从大到小排序
+            productsWithScores.sort((a, b) => b.score - a.score);
+            
+            const tbody = document.querySelector('#productTable tbody');
+            tbody.innerHTML = '';
+            
+            productsWithScores.forEach(product => {
+                const row = document.createElement('tr');
+                const cell = document.createElement('td');
+                cell.textContent = extractProductName(product.name);
+                row.appendChild(cell);
+                tbody.appendChild(row);
             });
         }
 
-        // 初始化
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('页面初始化...');
-            handlePasswordVerification();
-            
-            // 监听来自其他标签页的消息
-            broadcastChannel.onmessage = async (event) => {
-                console.log('收到广播消息:', event.data);
-                const data = event.data;
-                // 更新 Edge Config
-                await updateEdgeConfig(data);
-                // 更新本地存储
-                localStorage.setItem('selectedProducts', JSON.stringify(data.selectedProducts));
-                localStorage.setItem('productScores', JSON.stringify(data.productScores));
-                localStorage.setItem('highlightedProducts', JSON.stringify(data.highlightedProducts));
-                if (checkLoginStatus()) {
-                    await displayProducts();
-                }
-            };
-            
-            // 如果已登录，开始定时更新
-            if (checkLoginStatus()) {
-                console.log('用户已登录，开始定时更新');
-                // 立即执行一次
-                displayProducts();
-                // 每秒更新一次显示
-                setInterval(displayProducts, 1000);
-            }
-        });
+        // 初始显示
+        displayProducts();
+        
+        // 每秒更新一次显示
+        setInterval(displayProducts, 1000);
     </script>
 </body>
 </html> 
