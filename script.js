@@ -1079,20 +1079,24 @@ async function updateTableStatus() {
             currentProducts.add(row.dataset.productName);
         });
 
-        // 使用Supabase SDK获取数据
-        const { data: productStatusList, error } = await supabase
-            .from('product_status')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(1);
+        const response = await fetch('https://ddejqskjoctdtqeqijmn.supabase.co/rest/v1/product_status?select=*', {
+            headers: {
+                'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
+                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM'
+            }
+        });
 
-        if (error) throw error;
+        if (!response.ok) {
+            throw new Error('获取数据失败: ' + response.statusText);
+        }
+
+        const productStatusList = await response.json();
+        const latestStatus = productStatusList[productStatusList.length - 1];
         
-        if (!productStatusList || productStatusList.length === 0) {
+        if (!latestStatus) {
             throw new Error('没有找到产品状态数据');
         }
 
-        const latestStatus = productStatusList[0];
         let selectedProducts = latestStatus.selected_products || [];
         let highlightedProducts = latestStatus.highlighted_products || [];
         let productScores = latestStatus.product_scores || {};
@@ -1105,18 +1109,24 @@ async function updateTableStatus() {
         if (selectedProducts.length !== latestStatus.selected_products?.length || 
             highlightedProducts.length !== latestStatus.highlighted_products?.length) {
             
-            // 使用Supabase SDK更新数据
-            const { error: updateError } = await supabase
-                .from('product_status')
-                .insert({
+            const updateResponse = await fetch('https://ddejqskjoctdtqeqijmn.supabase.co/rest/v1/product_status', {
+                method: 'POST',
+                headers: {
+                    'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
+                    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify({
                     selected_products: selectedProducts,
                     highlighted_products: highlightedProducts,
                     product_scores: productScores,
                     last_update: new Date().toISOString()
-                });
+                })
+            });
 
-            if (updateError) {
-                throw new Error('清理数据失败: ' + updateError.message);
+            if (!updateResponse.ok) {
+                throw new Error('清理数据失败: ' + updateResponse.statusText);
             }
         }
 
@@ -1179,19 +1189,25 @@ async function handleProductSelection(checkbox) {
     localStorage.setItem('selectedProducts', JSON.stringify(selectedProducts));
     localStorage.setItem('productScores', JSON.stringify(productScores));
 
-    // 使用Supabase SDK更新数据
     try {
-        const { error } = await supabase
-            .from('product_status')
-            .insert({
+        const response = await fetch('https://ddejqskjoctdtqeqijmn.supabase.co/rest/v1/product_status', {
+            method: 'POST',
+            headers: {
+                'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
+                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
+                'Content-Type': 'application/json',
+                'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
                 selected_products: selectedProducts,
                 highlighted_products: highlightedProducts,
                 product_scores: productScores,
                 last_update: new Date().toISOString()
-            });
+            })
+        });
 
-        if (error) {
-            throw new Error('更新失败: ' + error.message);
+        if (!response.ok) {
+            throw new Error('更新失败: ' + response.statusText);
         }
 
         showToast('数据同步成功', 'success');
@@ -1226,19 +1242,25 @@ async function handleProductHighlight(checkbox) {
     
     localStorage.setItem('highlightedProducts', JSON.stringify(highlightedProducts));
 
-    // 使用Supabase SDK更新数据
     try {
-        const { error } = await supabase
-            .from('product_status')
-            .insert({
+        const response = await fetch('https://ddejqskjoctdtqeqijmn.supabase.co/rest/v1/product_status', {
+            method: 'POST',
+            headers: {
+                'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
+                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
+                'Content-Type': 'application/json',
+                'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
                 selected_products: selectedProducts,
                 highlighted_products: highlightedProducts,
                 product_scores: productScores,
                 last_update: new Date().toISOString()
-            });
+            })
+        });
 
-        if (error) {
-            throw new Error('更新失败: ' + error.message);
+        if (!response.ok) {
+            throw new Error('更新失败: ' + response.statusText);
         }
 
         showToast('数据同步成功', 'success');

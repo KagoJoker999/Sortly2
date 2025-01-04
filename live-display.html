@@ -6,7 +6,6 @@
     <link rel="icon" type="image/png" href="./icon48.png">
     <link rel="shortcut icon" type="image/png" href="./icon48.png">
     <link rel="stylesheet" href="./styles.css">
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -136,11 +135,6 @@
     </div>
 
     <script>
-        // 初始化 Supabase 客户端
-        const supabaseUrl = 'https://ddejqskjoctdtqeqijmn.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM';
-        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
-
         let autoSyncEnabled = true;
         let syncInterval;
 
@@ -170,20 +164,24 @@
             button.disabled = true;
             
             try {
-                // 使用Supabase SDK获取数据
-                const { data: productStatusList, error } = await supabase
-                    .from('product_status')
-                    .select('*')
-                    .order('created_at', { ascending: false })
-                    .limit(1);
+                const response = await fetch('https://ddejqskjoctdtqeqijmn.supabase.co/rest/v1/product_status?select=*', {
+                    headers: {
+                        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
+                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM'
+                    }
+                });
 
-                if (error) throw error;
+                if (!response.ok) {
+                    throw new Error('获取数据失败: ' + response.statusText);
+                }
+
+                const productStatusList = await response.json();
+                const latestStatus = productStatusList[productStatusList.length - 1];
                 
-                if (!productStatusList || productStatusList.length === 0) {
+                if (!latestStatus) {
                     throw new Error('没有找到产品状态数据');
                 }
 
-                const latestStatus = productStatusList[0];
                 const selectedProducts = latestStatus.selected_products || [];
                 const highlightedProducts = latestStatus.highlighted_products || [];
                 const productScores = latestStatus.product_scores || {};
