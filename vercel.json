@@ -24,8 +24,25 @@
     ],
     "routes": [
         {
-            "src": "/api/(.*)",
-            "dest": "/api/$1"
+            "src": "/api/testRead",
+            "dest": "/api/testRead/index.js"
+        },
+        {
+            "src": "/api/getDigest",
+            "dest": "/api/getDigest/index.js"
+        },
+        {
+            "src": "/api/getProductStatus",
+            "dest": "/api/getProductStatus/index.js",
+            "headers": {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET",
+                "Access-Control-Allow-Headers": "Content-Type"
+            }
+        },
+        {
+            "src": "/api/updateProductStatus",
+            "dest": "/api/updateProductStatus/index.js"
         },
         {
             "src": "/(.*)",

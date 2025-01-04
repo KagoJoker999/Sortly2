@@ -1,5 +1,12 @@
 {
+  "name": "product-ranking",
+  "version": "1.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
-    "@vercel/edge-config": "^1.4.0"
+    "@supabase/supabase-js": "^2.39.3",
+    "node-fetch": "^3.3.2"
   }
 }

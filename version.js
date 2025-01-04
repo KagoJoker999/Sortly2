@@ -1,9 +1,9 @@
-const APP_VERSION = 'v1.0.4';
+const APP_VERSION = 'v2.0.0';
 
-// 在页面加载时自动设置版本号
+// 在页面加载时设置版本号
 document.addEventListener('DOMContentLoaded', () => {
-    const versionTags = document.getElementsByClassName('version-tag');
-    for (let tag of versionTags) {
-        tag.textContent = APP_VERSION;
+    const versionElements = document.getElementsByClassName('version-tag');
+    for (const element of versionElements) {
+        element.textContent = APP_VERSION;
     }
 }); 

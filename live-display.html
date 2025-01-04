@@ -1,72 +1,257 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>直播展示页</title>
+    <title>直播数据展示</title>
+    <link rel="icon" type="image/png" href="./icon48.png">
+    <link rel="shortcut icon" type="image/png" href="./icon48.png">
+    <link rel="stylesheet" href="./styles.css">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
         body {
-            background-color: #e8f5e9;
             font-family: Arial, sans-serif;
             padding: 20px;
+            line-height: 1.6;
+        }
+        .status {
+            display: inline-block;
+            margin-left: 20px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            vertical-align: middle;
+        }
+        .success {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
         }
         table {
-            width: 500px;
-            margin: 0 auto;
+            width: 100%;
             border-collapse: collapse;
+            margin: 0;
+            padding: 0;
         }
-        td {
-            padding: 10px;
-            border: 1px solid #4caf50;
-            font-size: 21px;
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            font-size: 26px;
+        }
+        th {
+            background-color: #f5f5f5;
+        }
+        .selected {
+            background-color: #e3f2fd;
+        }
+        .highlighted {
+            color: red;
             font-weight: bold;
-            color: black;
+        }
+        .button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 8px 16px;
             text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            margin-left: 20px;
+            cursor: pointer;
+            border-radius: 4px;
+            vertical-align: middle;
+        }
+        .button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .header-container {
+            display: flex;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .header-container h2 {
+            margin: 0;
+        }
+        .toggle-button {
+            margin-left: 20px;
+            background-color: #fff;
+            border: 2px solid #2196F3;
+            color: #2196F3;
+            padding: 8px 16px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+            padding-left: 35px;
+        }
+        .toggle-button::before {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            background-color: #2196F3;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+        .toggle-button.manual {
+            background-color: #fff;
+            border-color: #ff0000;
+            color: #ff0000;
+        }
+        .toggle-button.manual::before {
+            background-color: #ff0000;
+        }
+        #syncButton {
+            display: none;
+            width: auto;
+        }
+        .control-panel {
+            margin-top: 10px;
         }
     </style>
 </head>
 <body>
-    <table id="productTable">
-        <tbody>
-            <!-- 产品列表将通过 JavaScript 动态填充 -->
-        </tbody>
-    </table>
+    <div id="rankingList"></div>
+    <div class="header-container">
+        <h2>综合排名展示</h2>
+        <div id="status" class="status"></div>
+        <button id="toggleSync" class="toggle-button" onclick="toggleSyncMode()">自动刷新中</button>
+        <button id="syncButton" class="button" onclick="syncRankingWithDatabase()">刷新数据</button>
+    </div>
+    <div class="control-panel">
+        <button id="manual-sync" class="action-button" style="display: none;">手动更新</button>
+        <button id="update-status" class="action-button" style="display: none;">更新状态</button>
+    </div>
 
     <script>
-        function extractProductName(name) {
-            const match = name.match(/「([^」]+)」/);
-            return match ? match[1] : name;
+        // 初始化 Supabase 客户端
+        const supabaseUrl = 'https://ddejqskjoctdtqeqijmn.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+        let autoSyncEnabled = true;
+        let syncInterval;
+
+        function toggleSyncMode() {
+            autoSyncEnabled = !autoSyncEnabled;
+            const toggleButton = document.getElementById('toggleSync');
+            const syncButton = document.getElementById('syncButton');
+            
+            if (autoSyncEnabled) {
+                toggleButton.textContent = '自动刷新中';
+                toggleButton.classList.remove('manual');
+                syncButton.style.display = 'none';
+                syncInterval = setInterval(syncRankingWithDatabase, 3000);
+            } else {
+                toggleButton.textContent = '手动刷新中';
+                toggleButton.classList.add('manual');
+                syncButton.style.display = 'inline-block';
+                clearInterval(syncInterval);
+            }
         }
 
-        function displayProducts() {
-            const selectedProducts = JSON.parse(localStorage.getItem('selectedProducts') || '[]');
-            const productScores = JSON.parse(localStorage.getItem('productScores') || '{}');
+        // 初始化自动同步
+        syncInterval = setInterval(syncRankingWithDatabase, 3000);
+
+        async function syncRankingWithDatabase() {
+            const button = document.getElementById('syncButton');
+            button.disabled = true;
             
-            // 创建包含产品名称和分数的数组
-            const productsWithScores = selectedProducts.map(product => ({
-                name: product,
-                score: productScores[product] || 0
-            }));
-            
-            // 按总得分从大到小排序
-            productsWithScores.sort((a, b) => b.score - a.score);
-            
-            const tbody = document.querySelector('#productTable tbody');
-            tbody.innerHTML = '';
-            
-            productsWithScores.forEach(product => {
-                const row = document.createElement('tr');
-                const cell = document.createElement('td');
-                cell.textContent = extractProductName(product.name);
-                row.appendChild(cell);
-                tbody.appendChild(row);
-            });
+            try {
+                // 使用Supabase SDK获取数据
+                const { data: productStatusList, error } = await supabase
+                    .from('product_status')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+
+                if (error) throw error;
+                
+                if (!productStatusList || productStatusList.length === 0) {
+                    throw new Error('没有找到产品状态数据');
+                }
+
+                const latestStatus = productStatusList[0];
+                const selectedProducts = latestStatus.selected_products || [];
+                const highlightedProducts = latestStatus.highlighted_products || [];
+                const productScores = latestStatus.product_scores || {};
+
+                // 按照总分排序
+                const sortedProducts = selectedProducts.sort((a, b) => {
+                    const scoreA = productScores[a] || 0;
+                    const scoreB = productScores[b] || 0;
+                    return scoreB - scoreA;
+                });
+
+                // 显示排名列表（包含选择和高亮状态）
+                const rankingHtml = `
+                    <table style="margin: 0; padding: 0;">
+                        <thead style="display: none;">
+                            <tr>
+                                <th>产品名称</th>
+                                <th style="display: none;">状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${sortedProducts.map(productName => {
+                                const isHighlighted = highlightedProducts.includes(productName);
+                                const match = productName.match(/「([^」]+)」/);
+                                const displayName = match ? match[1] : productName;
+                                return `
+                                    <tr class="${isHighlighted ? 'highlighted' : ''} selected">
+                                        <td>${displayName}</td>
+                                        <td style="display: none;">${isHighlighted ? '已选择，已高亮' : '已选择'}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                `;
+                document.getElementById('rankingList').innerHTML = rankingHtml;
+
+                // 更新状态显示
+                const statusDiv = document.getElementById('status');
+                statusDiv.className = 'status success';
+                statusDiv.textContent = '✅ 数据同步成功 - ' + new Date().toLocaleString();
+
+                hideManualUpdateButtons(); // 同步成功时隐藏按钮
+
+            } catch (error) {
+                console.error('同步失败:', error);
+                showManualUpdateButtons(); // 同步失败时显示按钮
+                const statusDiv = document.getElementById('status');
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '❌ ' + error.message;
+            } finally {
+                button.disabled = false;
+            }
         }
 
-        // 初始显示
-        displayProducts();
+        // 页面加载时立即同步一次
+        syncRankingWithDatabase();
+
+        // 只在更新失败时显示手动更新按钮
+        function showManualUpdateButtons() {
+            document.getElementById('manual-sync').style.display = 'block';
+            document.getElementById('update-status').style.display = 'block';
+        }
         
-        // 每秒更新一次显示
-        setInterval(displayProducts, 1000);
+        function hideManualUpdateButtons() {
+            document.getElementById('manual-sync').style.display = 'none';
+            document.getElementById('update-status').style.display = 'none';
+        }
     </script>
 </body>
 </html> 

@@ -113,9 +113,15 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeExpectedSales();
     
     // 添加更新状态按钮的事件监听
-    document.getElementById('updateStatus').addEventListener('click', () => {
+    document.getElementById('updateStatus').addEventListener('click', async () => {
+        const syncStatus = await verifyDataSync();
+        if (syncStatus) {
+            showToast(
+                syncStatus.isSync ? '数据已同步' : '数据已重新同步',
+                syncStatus.isSync ? 'success' : 'info'
+            );
+        }
         updateTableStatus();
-        showToast('状态已更新', 'success');
     });
     
     document.querySelectorAll('input[name="showCount"]').forEach(radio => {
@@ -886,7 +892,7 @@ function calculateEfficiencyScores(data) {
     }).filter(item => item !== null);
 }
 
-// 添加权重输入验证
+// 添加权重输入验证和计算函数
 function initializeWeightInputs() {
     const weightInputs = [
         'efficiency-weight',
@@ -903,27 +909,128 @@ function initializeWeightInputs() {
             
             // 计算总和
             const total = weightInputs.reduce((sum, inputId) => {
-                return sum + parseFloat(document.getElementById(inputId).value);
+                return sum + parseFloat(document.getElementById(inputId).value || 0);
             }, 0);
             
             if (total !== 100) {
                 showToast('所有权重之和必须为100%', 'error');
+            } else {
+                // 权重改变时重新计算排名
+                calculateRankingScores();
+                updateTables();
             }
         });
+    });
+}
+
+// 计算排名分数
+function calculateRankingScores() {
+    if (!processedData) return;
+
+    // 获取当前权重值
+    const weights = {
+        efficiencyWeight: parseFloat(document.getElementById('efficiency-weight').value || 0) / 100,
+        exposureWeight: parseFloat(document.getElementById('exposure-weight').value || 0) / 100,
+        conversionWeight: parseFloat(document.getElementById('conversion-weight').value || 0) / 100,
+        transactionWeight: parseFloat(document.getElementById('transaction-weight').value || 0) / 100
+    };
+
+    // 使用原始的基础分和权重计算总分
+    processedData.forEach(item => {
+        item.rankingScore = 
+            (item.efficiencyBaseScore * weights.efficiencyWeight) +
+            (item.exposureBaseScore * weights.exposureWeight) +
+            (item.conversionBaseScore * weights.conversionWeight) +
+            (item.transactionBaseScore * weights.transactionWeight);
+            
+        // 更新各项得分
+        item.efficiencyScore = item.efficiencyBaseScore * weights.efficiencyWeight;
+        item.exposureScore = item.exposureBaseScore * weights.exposureWeight;
+        item.conversionScore = item.conversionBaseScore * weights.conversionWeight;
+        item.transactionScore = item.transactionBaseScore * weights.transactionWeight;
     });
 }
 
 function updateTables() {
     if (!processedData) return;
     
-    const showCount = document.querySelector('input[name="showCount"]:checked').value;
+    const showCountRadios = document.getElementsByName('showCount');
+    let selectedCount = 30; // 默认值
+    
+    // 获取选中的显示数量
+    for (const radio of showCountRadios) {
+        if (radio.checked) {
+            selectedCount = parseInt(radio.value);
+            break;
+        }
+    }
     
     // 更新综合排名表格
     const sortedByTotal = sortByTotal(processedData);
-    updateTable('comprehensive-table', sortedByTotal, showCount);
+    updateTable('comprehensive-table', sortedByTotal, selectedCount);
     
-    updateTableStatus(); // 添加这一行，在更新表格后更新状态
+    // 在表格生成后再同步数据库状态
+    setTimeout(() => {
+        updateTableStatus();
+    }, 20);
 }
+
+// 添加显示数量切换事件监听
+function initializeShowCountRadios() {
+    const showCountRadios = document.getElementsByName('showCount');
+    showCountRadios.forEach(radio => {
+        radio.addEventListener('change', () => {
+            updateTables();
+        });
+    });
+}
+
+// 在页面加载时初始化
+document.addEventListener('DOMContentLoaded', () => {
+    // 初始化权重输入和显示数量选择
+    initializeWeightInputs();
+    initializeShowCountRadios();
+
+    // 添加权重预设选择事件监听
+    const presetSelect = document.getElementById('weight-preset');
+    if (presetSelect) {
+        presetSelect.addEventListener('change', (e) => {
+            handleWeightPresetChange(e.target.value);
+            // 预设改变后重新计算期望成交单量
+            calculateExpectedSales();
+        });
+    }
+
+    // 添加编辑预设按钮事件监听
+    const editPresetButton = document.getElementById('edit-preset-button');
+    if (editPresetButton) {
+        editPresetButton.addEventListener('click', handleEditPreset);
+    }
+
+    // 添加平均在线人数和讲解期望成交比例的事件监听
+    const averageOnlineInput = document.getElementById('average-online');
+    const explanationRatioInput = document.getElementById('explanation-ratio');
+    const transactionRatioInput = document.getElementById('transaction-ratio');
+    
+    if (averageOnlineInput) {
+        averageOnlineInput.addEventListener('input', calculateExpectedSales);
+        averageOnlineInput.addEventListener('change', calculateExpectedSales);
+    }
+    if (explanationRatioInput) {
+        explanationRatioInput.addEventListener('input', calculateExpectedSales);
+        explanationRatioInput.addEventListener('change', calculateExpectedSales);
+    }
+    if (transactionRatioInput) {
+        transactionRatioInput.addEventListener('input', calculateExpectedSales);
+        transactionRatioInput.addEventListener('change', calculateExpectedSales);
+    }
+
+    // 设置默认权重预设
+    handleWeightPresetChange('transactionCount');
+    
+    // 初始计算期望成交单量
+    calculateExpectedSales();
+});
 
 function updateTable(tableId, data, limit) {
     const tbody = document.getElementById(tableId);
@@ -944,32 +1051,110 @@ function updateTable(tableId, data, limit) {
         const name = item.name || '';
         const truncatedName = name.length > 10 ? name.substring(0, 10) + '...' : name;
         
-        // 为选中的行添加特殊类名
         row.className = 'product-row';
-        row.dataset.productName = name; // 存储完整产品名称
+        row.dataset.productName = name;
         
         row.innerHTML = `
-            <td><input type="checkbox" class="product-checkbox" onchange="handleProductSelection(this)"></td>
+            <td><input type="checkbox" class="select-checkbox" onchange="handleProductSelection(this)"></td>
             <td><input type="checkbox" class="highlight-checkbox" onchange="handleProductHighlight(this)"></td>
             <td>${index + 1}</td>
             <td title="${name}">${truncatedName}</td>
             <td>${item.id || ''}</td>
-            <td class="calculated-score" title="基础分：${item.efficiencyBaseScore}分">${item.efficiencyScore.toFixed(1)}分</td>
-            <td class="calculated-score" title="基础分：${item.exposureBaseScore}分">${item.exposureScore.toFixed(1)}分</td>
-            <td class="calculated-score" title="基础分：${item.conversionBaseScore}分">${item.conversionScore.toFixed(1)}分</td>
-            <td class="calculated-score" title="基础分：${item.transactionBaseScore}分">${item.transactionScore.toFixed(1)}分</td>
-            <td class="total-score">${item.rankingScore.toFixed(1)}分</td>
+            <td>${item.efficiencyScore.toFixed(1)}分</td>
+            <td>${item.exposureScore.toFixed(1)}分</td>
+            <td>${item.conversionScore.toFixed(1)}分</td>
+            <td>${item.transactionScore.toFixed(1)}分</td>
+            <td>${item.rankingScore.toFixed(1)}分</td>
         `;
         tbody.appendChild(row);
     });
 }
 
-// 处理产品选择
-function handleProductSelection(checkbox) {
+// 更新表格中的选择和高亮状态
+async function updateTableStatus() {
+    try {
+        // 获取当前表格中的所有产品名称
+        const currentProducts = new Set();
+        document.querySelectorAll('.product-row').forEach(row => {
+            currentProducts.add(row.dataset.productName);
+        });
+
+        // 使用Supabase SDK获取数据
+        const { data: productStatusList, error } = await supabase
+            .from('product_status')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+        if (error) throw error;
+        
+        if (!productStatusList || productStatusList.length === 0) {
+            throw new Error('没有找到产品状态数据');
+        }
+
+        const latestStatus = productStatusList[0];
+        let selectedProducts = latestStatus.selected_products || [];
+        let highlightedProducts = latestStatus.highlighted_products || [];
+        let productScores = latestStatus.product_scores || {};
+
+        // 清理不存在的产品
+        selectedProducts = selectedProducts.filter(name => currentProducts.has(name));
+        highlightedProducts = highlightedProducts.filter(name => currentProducts.has(name));
+
+        // 如果有产品被清理，更新数据库
+        if (selectedProducts.length !== latestStatus.selected_products?.length || 
+            highlightedProducts.length !== latestStatus.highlighted_products?.length) {
+            
+            // 使用Supabase SDK更新数据
+            const { error: updateError } = await supabase
+                .from('product_status')
+                .insert({
+                    selected_products: selectedProducts,
+                    highlighted_products: highlightedProducts,
+                    product_scores: productScores,
+                    last_update: new Date().toISOString()
+                });
+
+            if (updateError) {
+                throw new Error('清理数据失败: ' + updateError.message);
+            }
+        }
+
+        // 更新表格显示
+        document.querySelectorAll('.product-row').forEach(row => {
+            const productName = row.dataset.productName;
+            const checkbox = row.querySelector('.select-checkbox');
+            const highlightCheckbox = row.querySelector('.highlight-checkbox');
+            
+            if (selectedProducts.includes(productName)) {
+                checkbox.checked = true;
+                row.classList.add('selected-product');
+            } else {
+                checkbox.checked = false;
+                row.classList.remove('selected-product');
+            }
+            
+            if (highlightedProducts.includes(productName)) {
+                highlightCheckbox.checked = true;
+                row.classList.add('highlighted-product');
+            } else {
+                highlightCheckbox.checked = false;
+                row.classList.remove('highlighted-product');
+            }
+        });
+
+        showToast('数据同步成功', 'success');
+    } catch (error) {
+        console.error('同步失败:', error);
+        showToast('更新失败: ' + error.message, 'error');
+    }
+}
+
+// 修改产品选择处理函数
+async function handleProductSelection(checkbox) {
     const row = checkbox.closest('tr');
     const productName = row.dataset.productName;
-    const scoreCell = row.querySelector('.total-score');
-    const score = parseFloat(scoreCell.textContent);
+    const score = parseFloat(row.querySelector('td:last-child').textContent) || 0;
     
     // 更新行的样式
     if (checkbox.checked) {
@@ -980,27 +1165,58 @@ function handleProductSelection(checkbox) {
     
     // 更新本地存储中的选中产品列表
     let selectedProducts = JSON.parse(localStorage.getItem('selectedProducts') || '[]');
+    let highlightedProducts = JSON.parse(localStorage.getItem('highlightedProducts') || '[]');
     let productScores = JSON.parse(localStorage.getItem('productScores') || '{}');
     
     if (checkbox.checked && !selectedProducts.includes(productName)) {
         selectedProducts.push(productName);
-        productScores[productName] = score; // 保存产品分数
+        productScores[productName] = score;
     } else if (!checkbox.checked) {
         selectedProducts = selectedProducts.filter(name => name !== productName);
-        delete productScores[productName]; // 删除产品分数
+        delete productScores[productName];
     }
     
     localStorage.setItem('selectedProducts', JSON.stringify(selectedProducts));
-    localStorage.setItem('productScores', JSON.stringify(productScores)); // 保存分数信息
+    localStorage.setItem('productScores', JSON.stringify(productScores));
+
+    // 使用Supabase SDK更新数据
+    try {
+        const { error } = await supabase
+            .from('product_status')
+            .insert({
+                selected_products: selectedProducts,
+                highlighted_products: highlightedProducts,
+                product_scores: productScores,
+                last_update: new Date().toISOString()
+            });
+
+        if (error) {
+            throw new Error('更新失败: ' + error.message);
+        }
+
+        showToast('数据同步成功', 'success');
+    } catch (error) {
+        console.error('同步失败:', error);
+        showToast('更新失败: ' + error.message, 'error');
+    }
 }
 
-// 处理产品高亮
-function handleProductHighlight(checkbox) {
+// 修改产品高亮处理函数
+async function handleProductHighlight(checkbox) {
     const row = checkbox.closest('tr');
     const productName = row.dataset.productName;
     
+    // 更新行的样式
+    if (checkbox.checked) {
+        row.classList.add('highlighted-product');
+    } else {
+        row.classList.remove('highlighted-product');
+    }
+    
     // 更新本地存储中的高亮产品列表
+    let selectedProducts = JSON.parse(localStorage.getItem('selectedProducts') || '[]');
     let highlightedProducts = JSON.parse(localStorage.getItem('highlightedProducts') || '[]');
+    let productScores = JSON.parse(localStorage.getItem('productScores') || '{}');
     
     if (checkbox.checked && !highlightedProducts.includes(productName)) {
         highlightedProducts.push(productName);
@@ -1009,6 +1225,27 @@ function handleProductHighlight(checkbox) {
     }
     
     localStorage.setItem('highlightedProducts', JSON.stringify(highlightedProducts));
+
+    // 使用Supabase SDK更新数据
+    try {
+        const { error } = await supabase
+            .from('product_status')
+            .insert({
+                selected_products: selectedProducts,
+                highlighted_products: highlightedProducts,
+                product_scores: productScores,
+                last_update: new Date().toISOString()
+            });
+
+        if (error) {
+            throw new Error('更新失败: ' + error.message);
+        }
+
+        showToast('数据同步成功', 'success');
+    } catch (error) {
+        console.error('同步失败:', error);
+        showToast('更新失败: ' + error.message, 'error');
+    }
 }
 
 // 排序函数
@@ -1037,190 +1274,70 @@ function sortByTransaction(data) {
         .sort((a, b) => b.transactionScore - a.transactionScore);
 }
 
-// 初始化期望成交单量计算
-function initializeExpectedSales() {
-    // 监听平均在线人数变化
-    document.getElementById('average-online').addEventListener('input', calculateExpectedSales);
-    // 监听讲解期望成交比例变化
-    document.getElementById('explanation-ratio').addEventListener('input', calculateExpectedSales);
-    // 初始计算一次
-    calculateExpectedSales();
-}
+// 修改权重预设选择处理函数
+function handleWeightPresetChange(preset) {
+    const presetData = weightPresets[preset];
+    if (!presetData) return;
 
-// 权重预设功能
-document.addEventListener('DOMContentLoaded', function() {
-    const presetSelect = document.getElementById('weight-preset');
-    const editPresetBtn = document.getElementById('edit-preset');
-    
-    // 从本地存储加载预设
-    function loadSavedPresets() {
-        const savedPresets = localStorage.getItem('weightPresets');
-        if (savedPresets) {
-            try {
-                const parsedPresets = JSON.parse(savedPresets);
-                // 更新全局预设对象
-                Object.assign(weightPresets, parsedPresets);
-            } catch (error) {
-                console.error('加载预设失败:', error);
-            }
-        }
-    }
-    
-    // 加载预设
-    function loadPreset(presetKey) {
-        const preset = weightPresets[presetKey];
-        if (!preset) return;
-        
-        document.getElementById('efficiency-weight').value = preset.weights.efficiency;
-        document.getElementById('exposure-weight').value = preset.weights.exposure;
-        document.getElementById('conversion-weight').value = preset.weights.conversion;
-        document.getElementById('transaction-weight').value = preset.weights.transaction;
-    }
-    
-    // 保存预设
-    function savePreset(presetKey, weights) {
-        weightPresets[presetKey].weights = weights;
-        // 保存到本地存储
-        localStorage.setItem('weightPresets', JSON.stringify(weightPresets));
-    }
-    
-    // 创建编辑预设对话框
-    function createPresetEditModal(presetKey) {
-        const modal = document.createElement('div');
-        modal.className = 'preset-edit-modal';
-        const preset = weightPresets[presetKey];
-        
-        modal.innerHTML = `
-            <div class="preset-edit-content">
-                <h2>编辑${preset.name}预设</h2>
-                <div class="weight-group">
-                    <label>讲解效率分权重：</label>
-                    <div class="weight-input-group">
-                        <input type="number" class="form-input" id="edit-efficiency" value="${preset.weights.efficiency}" min="0" max="100">
-                        <span class="weight-unit">%</span>
-                    </div>
-                </div>
-                <div class="weight-group">
-                    <label>曝光点击分权重：</label>
-                    <div class="weight-input-group">
-                        <input type="number" class="form-input" id="edit-exposure" value="${preset.weights.exposure}" min="0" max="100">
-                        <span class="weight-unit">%</span>
-                    </div>
-                </div>
-                <div class="weight-group">
-                    <label>点击成交分权重：</label>
-                    <div class="weight-input-group">
-                        <input type="number" class="form-input" id="edit-conversion" value="${preset.weights.conversion}" min="0" max="100">
-                        <span class="weight-unit">%</span>
-                    </div>
-                </div>
-                <div class="weight-group">
-                    <label>成交件数分权重：</label>
-                    <div class="weight-input-group">
-                        <input type="number" class="form-input" id="edit-transaction" value="${preset.weights.transaction}" min="0" max="100">
-                        <span class="weight-unit">%</span>
-                    </div>
-                </div>
-                <div class="preset-edit-buttons">
-                    <button class="action-button" id="cancel-edit">取消</button>
-                    <button class="action-button" id="save-preset">保存</button>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(modal);
-        const mask = document.getElementById('page-mask');
-        mask.style.display = 'block';
-        
-        // 绑定事件
-        document.getElementById('cancel-edit').onclick = () => {
-            modal.remove();
-            mask.style.display = 'none';
-        };
-        
-        document.getElementById('save-preset').onclick = () => {
-            const newWeights = {
-                efficiency: parseInt(document.getElementById('edit-efficiency').value),
-                exposure: parseInt(document.getElementById('edit-exposure').value),
-                conversion: parseInt(document.getElementById('edit-conversion').value),
-                transaction: parseInt(document.getElementById('edit-transaction').value)
-            };
-            
-            // 验证权重总和是否为100
-            const sum = Object.values(newWeights).reduce((a, b) => a + b, 0);
-            if (sum !== 100) {
-                showToast('权重总和必须为100%', 'error');
-                return;
-            }
-            
-            savePreset(presetKey, newWeights);
-            loadPreset(presetKey);
-            modal.remove();
-            mask.style.display = 'none';
-            showToast('预设保存成功', 'success');
-        };
-    }
-    
-    // 绑定预设选择事件
-    presetSelect.addEventListener('change', function() {
-        loadPreset(this.value);
-    });
-    
-    // 绑定编辑按钮事件
-    editPresetBtn.addEventListener('click', function() {
-        const currentPreset = presetSelect.value;
-        createPresetEditModal(currentPreset);
-    });
-    
-    // 初始化时加载保存的预设
-    loadSavedPresets();
-    // 初始加载默认预设
-    loadPreset(presetSelect.value);
-});
+    // 更新权重输入框的值
+    document.getElementById('efficiency-weight').value = presetData.weights.efficiency;
+    document.getElementById('exposure-weight').value = presetData.weights.exposure;
+    document.getElementById('conversion-weight').value = presetData.weights.conversion;
+    document.getElementById('transaction-weight').value = presetData.weights.transaction;
 
-// 更新表格中的选择和高亮状态
-function updateTableStatus() {
-    const selectedProducts = JSON.parse(localStorage.getItem('selectedProducts') || '[]');
-    const highlightedProducts = JSON.parse(localStorage.getItem('highlightedProducts') || '[]');
-    
-    // 获取所有产品行
-    const rows = document.querySelectorAll('.product-row');
-    
-    rows.forEach(row => {
-        const productName = row.dataset.productName;
-        const selectCheckbox = row.querySelector('.product-checkbox');
-        const highlightCheckbox = row.querySelector('.highlight-checkbox');
-        
-        // 更新选择状态
-        if (selectCheckbox) {
-            selectCheckbox.checked = selectedProducts.includes(productName);
-            if (selectCheckbox.checked) {
-                row.classList.add('selected-product');
-            } else {
-                row.classList.remove('selected-product');
-            }
-        }
-        
-        // 更新高亮状态
-        if (highlightCheckbox) {
-            highlightCheckbox.checked = highlightedProducts.includes(productName);
-        }
-    });
-}
-
-// 初始化表格
-updateTables(); 
-
-async function processExcelFile(file, averageOnline, transactionRatio) {
-    try {
-        const data = await readExcelFile(file);
-        processedData = calculateScores(data, averageOnline, transactionRatio);
+    // 如果已有数据，重新计算并更新表格
+    if (processedData && processedData.length > 0) {
+        calculateRankingScores();
         updateTables();
-        updateTableStatus();
+    }
+}
+
+// 添加权重预设编辑功能
+function handleEditPreset() {
+    // 获取当前权重值
+    const currentWeights = {
+        efficiency: parseFloat(document.getElementById('efficiency-weight').value),
+        exposure: parseFloat(document.getElementById('exposure-weight').value),
+        conversion: parseFloat(document.getElementById('conversion-weight').value),
+        transaction: parseFloat(document.getElementById('transaction-weight').value)
+    };
+
+    // 更新自定义预设
+    if (weightPresets && weightPresets.custom) {
+        weightPresets.custom.weights = currentWeights;
+        showToast('预设已保存', 'success');
+    } else {
+        showToast('保存失败：找不到自定义预设', 'error');
+    }
+}
+
+// 修改开始分析按钮点击处理函数
+async function handleAnalyzeClick() {
+    try {
+        // 获取并验证输入数据
+        const rawData = document.getElementById('data-input').value;
+        if (!rawData) {
+            showToast('请输入数据', 'error');
+            return;
+        }
+
+        // 处理数据
+        const data = processRawData(rawData);
+        if (!data || data.length === 0) {
+            showToast('数据处理失败', 'error');
+            return;
+        }
+
+        // 计算各项得分
+        processedData = calculateEfficiencyScores(data);
+        
+        // 计算排名得分并更新表格
+        calculateRankingScores();
+        updateTables();
+        
         showToast('分析完成', 'success');
     } catch (error) {
-        console.error('处理文件时出错:', error);
-        showToast('处理文件时出错', 'error');
-        throw error;
+        console.error('分析失败:', error);
+        showToast('分析失败: ' + error.message, 'error');
     }
 } 
