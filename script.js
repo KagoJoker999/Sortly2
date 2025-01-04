@@ -1414,4 +1414,21 @@ async function clearAllSelections() {
         console.error('清空失败:', error);
         showToast('清空失败: ' + error.message, 'error');
     }
+}
+
+function selectTopTenProducts() {
+    const table = document.getElementById('comprehensive-table');
+    const rows = table.getElementsByTagName('tr');
+    
+    // 遍历前10行
+    for (let i = 0; i < Math.min(10, rows.length); i++) {
+        const row = rows[i];
+        const selectCheckbox = row.querySelector('input[type="checkbox"].select-checkbox');
+        if (selectCheckbox) {
+            selectCheckbox.checked = true;
+        }
+    }
+    
+    // 触发状态更新
+    updateTableStatus();
 } 
