@@ -1362,4 +1362,56 @@ async function handleAnalyzeClick() {
         console.error('分析失败:', error);
         showToast('分析失败: ' + error.message, 'error');
     }
+}
+
+// 清空所有选择和高亮状态
+async function clearAllSelections() {
+    try {
+        // 清空本地存储
+        localStorage.setItem('selectedProducts', '[]');
+        localStorage.setItem('highlightedProducts', '[]');
+        localStorage.setItem('productScores', '{}');
+
+        // 更新数据库
+        const response = await fetch('https://ddejqskjoctdtqeqijmn.supabase.co/rest/v1/product_status', {
+            method: 'POST',
+            headers: {
+                'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
+                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
+                'Content-Type': 'application/json',
+                'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+                selected_products: [],
+                highlighted_products: [],
+                product_scores: {},
+                last_update: new Date().toISOString()
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('清空数据失败: ' + response.statusText);
+        }
+
+        // 更新表格显示
+        document.querySelectorAll('.product-row').forEach(row => {
+            const checkbox = row.querySelector('.select-checkbox');
+            const highlightCheckbox = row.querySelector('.highlight-checkbox');
+            
+            if (checkbox) {
+                checkbox.checked = false;
+                row.classList.remove('selected-product');
+            }
+            
+            if (highlightCheckbox) {
+                highlightCheckbox.checked = false;
+                row.classList.remove('highlighted-product');
+            }
+        });
+
+        showToast('已清空所有选择', 'success');
+    } catch (error) {
+        console.error('清空失败:', error);
+        showToast('清空失败: ' + error.message, 'error');
+    }
 } 
