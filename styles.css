@@ -355,12 +355,18 @@ tbody tr:hover {
 
 .header-left {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    width: 100%;
+    gap: 10px;
 }
 
 .header-left h2 {
+    margin: 0;
+    margin-right: 10px;
+}
+
+.header-left .action-button {
+    width: auto;
+    padding: 8px 16px;
     margin: 0;
 }
 
