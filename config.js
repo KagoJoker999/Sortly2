@@ -1,7 +1,7 @@
 // 配置参数
 const CONFIG = {
     // 在线人数调整值
-    ONLINE_ADJUSTMENT: 50  // 从填写的平均在线人数中减去的值
+    ONLINE_ADJUSTMENT: 100  // 从填写的平均在线人数中减去的值
 };
 
 // 导出配置
