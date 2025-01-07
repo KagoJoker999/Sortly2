@@ -273,8 +273,15 @@ function initializeConvertButton() {
                 return;
             }
             
+            // 更新读取到的产品总数
+            updateProductCountDisplay(data.length, 'fileProductCount');
+
+            // 过滤0库存产品
+            const filteredData = filterZeroStockProducts(data);
+            updateFinalProductCountDisplay(filteredData.length);
+
             // 显示原始数据
-            displayRawData(data);
+            displayRawData(filteredData);
             
             // 自动进行分析
             calculateAndDisplayScores();
@@ -311,7 +318,13 @@ function initializeAnalysisButton() {
 
         try {
             showToast('正在计算得分...');
-            calculateAndDisplayScores();
+            
+            // 过滤0库存产品
+            const filteredData = filterZeroStockProducts(processedData);
+            updateFinalProductCountDisplay(filteredData.length);
+
+            // 计算得分
+            calculateAndDisplayScores(filteredData);
             showToast('得分计算完成', 'success');
         } catch (error) {
             console.error('处理文件时出错:', error);
