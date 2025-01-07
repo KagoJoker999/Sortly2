@@ -39,7 +39,6 @@
                     <div class="button-row">
                         <button class="action-button" id="convertFormat" disabled>开始分析排名</button>
                         <button class="action-button" id="showLiveDisplay" onclick="window.open('./live-display.html', '_blank')">直播展示页</button>
-                        <button class="action-button" id="checkInventory" onclick="handleExcelUpload()">检验库存</button>
                     </div>
                 </div>
 
@@ -137,6 +136,7 @@
                     <div class="header-left">
                         <h2>综合排名</h2>
                         <button class="action-button" id="clearSelection" onclick="clearAllSelections()">清空选择</button>
+                        <button class="action-button" id="checkInventory" onclick="checkInventory()">检验库存</button>
                     </div>
                     <div class="radio-group">
                         <input type="radio" id="show10" name="showCount" value="10">

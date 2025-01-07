@@ -1433,34 +1433,41 @@ function selectTopTenProducts() {
     updateTableStatus();
 }
 
-function handleExcelUpload() {
+async function checkInventory() {
+    // 创建文件选择器
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.xlsx, .xls';
+    input.accept = '.xlsx,.xls';
     input.onchange = async (event) => {
         const file = event.target.files[0];
-        if (file) {
-            try {
-                const data = await readExcel(file);
-                const productsToRemove = data.filter(row => row['现货可售'] === 0).map(row => row['商品名称']);
-                removeProductsFromTable(productsToRemove);
-                showToast('库存为 0 的产品已移除', 'success');
-            } catch (error) {
-                console.error('处理 Excel 文件时出错:', error);
-                showToast('处理 Excel 文件时出错：' + error.message, 'error');
-            }
+        if (!file) return;
+
+        try {
+            // 读取Excel文件
+            const data = await readExcel(file);
+            const productNames = data.map(row => row['商品名称']);
+            showToast(`读取到 ${productNames.length} 个产品名称`, 'success');
+
+            // 更新排序列表
+            updateProductList(productNames);
+        } catch (error) {
+            console.error('读取文件失败:', error);
+            showToast('读取文件失败: ' + error.message, 'error');
         }
     };
     input.click();
 }
 
-function removeProductsFromTable(products) {
-    const rows = document.querySelectorAll('.product-row');
+function updateProductList(productNames) {
+    const table = document.getElementById('comprehensive-table');
+    const rows = Array.from(table.getElementsByTagName('tr'));
+
     rows.forEach(row => {
-        const productName = row.dataset.productName;
-        if (products.includes(productName)) {
+        const productName = row.querySelector('td:nth-child(4)').textContent;
+        if (productNames.includes(productName)) {
             row.remove();
         }
     });
-    updateTableStatus();
+
+    showToast('排序列表已更新', 'success');
 } 
