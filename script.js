@@ -1465,12 +1465,72 @@ function updateProductListById(productIds) {
     const table = document.getElementById('comprehensive-table');
     const rows = Array.from(table.getElementsByTagName('tr'));
 
+    const removedProducts = [];
+
     rows.forEach(row => {
         const productId = row.querySelector('td:nth-child(5)').textContent;
         if (productIds.includes(productId)) {
+            removedProducts.push(productId);
             row.remove();
         }
     });
 
+    // 同步更新服务器上的选中和高亮状态
+    updateServerProductStatus(removedProducts);
+
     showToast('排序列表已更新', 'success');
+}
+
+async function updateServerProductStatus(removedProducts) {
+    try {
+        const response = await fetch('https://ddejqskjoctdtqeqijmn.supabase.co/rest/v1/product_status?select=*', {
+            headers: {
+                'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
+                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('获取数据失败: ' + response.statusText);
+        }
+
+        const productStatusList = await response.json();
+        const latestStatus = productStatusList[productStatusList.length - 1];
+
+        if (!latestStatus) {
+            throw new Error('没有找到产品状态数据');
+        }
+
+        let selectedProducts = latestStatus.selected_products || [];
+        let highlightedProducts = latestStatus.highlighted_products || [];
+
+        // 移除被删除的产品
+        selectedProducts = selectedProducts.filter(id => !removedProducts.includes(id));
+        highlightedProducts = highlightedProducts.filter(id => !removedProducts.includes(id));
+
+        // 更新服务器数据
+        const updateResponse = await fetch('https://ddejqskjoctdtqeqijmn.supabase.co/rest/v1/product_status', {
+            method: 'POST',
+            headers: {
+                'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
+                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
+                'Content-Type': 'application/json',
+                'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+                selected_products: selectedProducts,
+                highlighted_products: highlightedProducts,
+                last_update: new Date().toISOString()
+            })
+        });
+
+        if (!updateResponse.ok) {
+            throw new Error('更新服务器数据失败: ' + updateResponse.statusText);
+        }
+
+        showToast('服务器状态已更新', 'success');
+    } catch (error) {
+        console.error('更新服务器状态失败:', error);
+        showToast('更新服务器状态失败: ' + error.message, 'error');
+    }
 } 
