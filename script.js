@@ -1442,14 +1442,17 @@ async function checkInventory() {
         const file = event.target.files[0];
         if (!file) return;
 
+        console.log('选择的文件:', file.name);
+
         try {
             // 读取Excel文件
             const data = await readExcel(file);
-            const productNames = data.map(row => row['商品名称']);
-            showToast(`读取到 ${productNames.length} 个产品名称`, 'success');
+            console.log('读取到的数据:', data);
+            const productIds = data.map(row => row['商品ID'] || row['产品ID']);
+            showToast(`读取到 ${productIds.length} 个产品ID`, 'success');
 
             // 更新排序列表
-            updateProductList(productNames);
+            updateProductListById(productIds);
         } catch (error) {
             console.error('读取文件失败:', error);
             showToast('读取文件失败: ' + error.message, 'error');
@@ -1458,13 +1461,13 @@ async function checkInventory() {
     input.click();
 }
 
-function updateProductList(productNames) {
+function updateProductListById(productIds) {
     const table = document.getElementById('comprehensive-table');
     const rows = Array.from(table.getElementsByTagName('tr'));
 
     rows.forEach(row => {
-        const productName = row.querySelector('td:nth-child(4)').textContent;
-        if (productNames.includes(productName)) {
+        const productId = row.querySelector('td:nth-child(5)').textContent;
+        if (productIds.includes(productId)) {
             row.remove();
         }
     });
