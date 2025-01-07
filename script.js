@@ -192,6 +192,14 @@ function handleFile(file) {
     // 自动聚焦到平均在线人数输入框
     const averageOnlineInput = document.getElementById('average-online');
     averageOnlineInput.focus();
+
+    // 读取文件并更新产品总数
+    readExcel(file).then(data => {
+        updateProductCountDisplay(data.length, 'fileProductCount');
+    }).catch(error => {
+        console.error('读取文件时出错:', error);
+        showToast('读取文件时出错：' + error.message, 'error');
+    });
 }
 
 // 处理CSV文件
