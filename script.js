@@ -1448,8 +1448,8 @@ async function checkInventory() {
             // 读取Excel文件
             const data = await readExcel(file);
             console.log('读取到的数据:', data);
-            const productIds = data.map(row => row['商品ID'] || row['产品ID']);
-            showToast(`读取到 ${productIds.length} 个产品ID`, 'success');
+            const productIds = data.map(row => row['商品ID']);
+            showToast(`读取到 ${productIds.length} 个商品ID`, 'success');
 
             // 更新排序列表
             updateProductListById(productIds);
