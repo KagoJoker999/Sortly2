@@ -36,10 +36,23 @@
                             <button class="action-button" onclick="document.getElementById('fileInput').click()">选择文件</button>
                         </div>
                     </div>
+                    <div class="product-count" id="fileProductCount">读取到的产品总数: 0</div>
                     <div class="button-row">
                         <button class="action-button" id="convertFormat" disabled>开始分析排名</button>
                         <button class="action-button" id="showLiveDisplay" onclick="window.open('./live-display.html', '_blank')">直播展示页</button>
                     </div>
+                </div>
+
+                <div class="panel-group">
+                    <h3>0库存产品导入</h3>
+                    <div class="upload-area" id="zeroStockDropZone">
+                        <input type="file" id="zeroStockFileInput" accept=".xlsx,.xls" style="display: none;">
+                        <div class="upload-text">
+                            <p>拖拽文件到此处或</p>
+                            <button class="action-button" onclick="document.getElementById('zeroStockFileInput').click()">选择文件</button>
+                        </div>
+                    </div>
+                    <div class="product-count" id="zeroStockProductCount">读取到的产品总数: 0</div>
                 </div>
 
                 <div class="panel-group">
@@ -136,8 +149,8 @@
                     <div class="header-left">
                         <h2>综合排名</h2>
                         <button class="action-button" id="clearSelection" onclick="clearAllSelections()">清空选择</button>
-                        <button class="action-button" id="checkInventory" onclick="checkInventory()">检验库存</button>
                     </div>
+                    <div class="product-count" id="finalProductCount">参与计算的产品总数: 0</div>
                     <div class="radio-group">
                         <input type="radio" id="show10" name="showCount" value="10">
                         <label for="show10">前10名</label>

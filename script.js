@@ -103,6 +103,7 @@ async function handlePasswordVerification() {
 // 文件处理相关变量
 let selectedFile = null;
 let processedData = null;
+let zeroStockProductIDs = [];
 
 // 初始化事件监听
 document.addEventListener('DOMContentLoaded', () => {
@@ -289,6 +290,7 @@ function initializeConvertButton() {
 // 修改初始化分析按钮
 function initializeAnalysisButton() {
     document.getElementById('startAnalysis').addEventListener('click', async () => {
+        if (!checkZeroStockImported()) return;
         const averageOnline = document.getElementById('average-online').value;
         const transactionRatio = document.getElementById('transaction-ratio').value;
         
@@ -323,7 +325,10 @@ async function processFile(file, averageOnline) {
     try {
         const rawData = await readFileData(file);
         processedData = rawData;
-        displayRawData(rawData);
+        updateProductCountDisplay(processedData.length, 'fileProductCount');
+        const filteredData = filterZeroStockProducts(processedData);
+        updateFinalProductCountDisplay(filteredData.length);
+        displayRawData(filteredData);
     } catch (error) {
         console.error('处理文件出错:', error);
         alert('处理文件时出错：' + error.message);
@@ -1433,104 +1438,74 @@ function selectTopTenProducts() {
     updateTableStatus();
 }
 
-async function checkInventory() {
-    // 创建文件选择器
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.xlsx,.xls';
-    input.onchange = async (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
+// 初始化0库存产品上传功能
+function initializeZeroStockUpload() {
+    const zeroStockDropZone = document.getElementById('zeroStockDropZone');
+    const zeroStockFileInput = document.getElementById('zeroStockFileInput');
 
-        console.log('选择的文件:', file.name);
-
-        try {
-            // 读取Excel文件
-            const data = await readExcel(file);
-            console.log('读取到的数据:', data);
-            const productIds = data.map(row => row['商品ID']);
-            showToast(`读取到 ${productIds.length} 个商品ID`, 'success');
-
-            // 更新排序列表
-            updateProductListById(productIds);
-        } catch (error) {
-            console.error('读取文件失败:', error);
-            showToast('读取文件失败: ' + error.message, 'error');
-        }
-    };
-    input.click();
-}
-
-function updateProductListById(productIds) {
-    const table = document.getElementById('comprehensive-table');
-    const rows = Array.from(table.getElementsByTagName('tr'));
-
-    const removedProducts = [];
-
-    rows.forEach(row => {
-        const productId = row.querySelector('td:nth-child(5)').textContent;
-        if (productIds.includes(productId)) {
-            removedProducts.push(productId);
-            row.remove();
-        }
+    zeroStockDropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        zeroStockDropZone.classList.add('dragover');
     });
 
-    // 同步更新服务器上的选中和高亮状态
-    updateServerProductStatus(removedProducts);
+    zeroStockDropZone.addEventListener('dragleave', () => {
+        zeroStockDropZone.classList.remove('dragover');
+    });
 
-    showToast('排序列表已更新', 'success');
+    zeroStockDropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zeroStockDropZone.classList.remove('dragover');
+        handleZeroStockFile(e.dataTransfer.files[0]);
+    });
+
+    zeroStockFileInput.addEventListener('change', (e) => {
+        handleZeroStockFile(e.target.files[0]);
+    });
 }
 
-async function updateServerProductStatus(removedProducts) {
+// 处理0库存产品文件
+async function handleZeroStockFile(file) {
+    if (!file) return;
     try {
-        const response = await fetch('https://ddejqskjoctdtqeqijmn.supabase.co/rest/v1/product_status?select=*', {
-            headers: {
-                'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
-                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM'
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error('获取数据失败: ' + response.statusText);
-        }
-
-        const productStatusList = await response.json();
-        const latestStatus = productStatusList[productStatusList.length - 1];
-
-        if (!latestStatus) {
-            throw new Error('没有找到产品状态数据');
-        }
-
-        let selectedProducts = latestStatus.selected_products || [];
-        let highlightedProducts = latestStatus.highlighted_products || [];
-
-        // 移除被删除的产品
-        selectedProducts = selectedProducts.filter(id => !removedProducts.includes(id));
-        highlightedProducts = highlightedProducts.filter(id => !removedProducts.includes(id));
-
-        // 更新服务器数据
-        const updateResponse = await fetch('https://ddejqskjoctdtqeqijmn.supabase.co/rest/v1/product_status', {
-            method: 'POST',
-            headers: {
-                'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
-                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
-                'Content-Type': 'application/json',
-                'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify({
-                selected_products: selectedProducts,
-                highlighted_products: highlightedProducts,
-                last_update: new Date().toISOString()
-            })
-        });
-
-        if (!updateResponse.ok) {
-            throw new Error('更新服务器数据失败: ' + updateResponse.statusText);
-        }
-
-        showToast('服务器状态已更新', 'success');
+        const data = await readExcel(file);
+        zeroStockProductIDs = data.map(row => row['商品ID']).filter(id => id);
+        updateProductCountDisplay(zeroStockProductIDs.length, 'zeroStockProductCount');
+        showToast('0库存产品列表上传成功', 'success');
     } catch (error) {
-        console.error('更新服务器状态失败:', error);
-        showToast('更新服务器状态失败: ' + error.message, 'error');
+        console.error('读取0库存产品文件时出错:', error);
+        showToast('读取0库存产品文件时出错：' + error.message, 'error');
     }
-} 
+}
+
+// 在分析排名前检查0库存产品列表是否已导入
+function checkZeroStockImported() {
+    if (zeroStockProductIDs.length === 0) {
+        showToast('请先导入0库存产品列表', 'error');
+        return false;
+    }
+    return true;
+}
+
+// 在数据导入的表格中去除0库存产品
+function filterZeroStockProducts(data) {
+    return data.filter(row => !zeroStockProductIDs.includes(row['商品ID']));
+}
+
+// 更新产品总数显示
+function updateProductCountDisplay(count, elementId) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.textContent = `读取到的产品总数: ${count}`;
+    }
+}
+
+// 更新最终参与计算的产品总数显示
+function updateFinalProductCountDisplay(count) {
+    const element = document.getElementById('finalProductCount');
+    if (element) {
+        element.textContent = `参与计算的产品总数: ${count}`;
+    }
+}
+
+// 初始化事件监听
+initializeZeroStockUpload(); 
