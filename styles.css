@@ -651,11 +651,15 @@ tbody tr:hover {
 } 
 
 #showLiveDisplay {
-    background-color: var(--primary-color);
+    background-color: #FF6B6B;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 #showLiveDisplay:hover {
-    background-color: #0056b3;
+    background-color: #FF5252;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 } 
 
 /* 选中产品的样式 */
