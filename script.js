@@ -1463,20 +1463,4 @@ function removeProductsFromTable(products) {
         }
     });
     updateTableStatus();
-}
-
-function updateCheckInventoryButton() {
-    const table = document.getElementById('comprehensive-table');
-    const hasContent = table && table.rows.length > 0;
-    const checkInventoryButton = document.getElementById('checkInventory');
-    checkInventoryButton.disabled = !hasContent;
-}
-
-// 在更新表格状态后调用
-function updateTableStatus() {
-    // ... existing code ...
-    updateCheckInventoryButton();
-}
-
-// 页面加载时检查按钮状态
-window.addEventListener('DOMContentLoaded', updateCheckInventoryButton); 
+} 
