@@ -1431,4 +1431,36 @@ function selectTopTenProducts() {
     
     // 触发状态更新
     updateTableStatus();
+}
+
+function handleExcelUpload() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xlsx, .xls';
+    input.onchange = async (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            try {
+                const data = await readExcel(file);
+                const productsToRemove = data.filter(row => row['现货可售'] === 0).map(row => row['商品名称']);
+                removeProductsFromTable(productsToRemove);
+                showToast('库存为 0 的产品已移除', 'success');
+            } catch (error) {
+                console.error('处理 Excel 文件时出错:', error);
+                showToast('处理 Excel 文件时出错：' + error.message, 'error');
+            }
+        }
+    };
+    input.click();
+}
+
+function removeProductsFromTable(products) {
+    const rows = document.querySelectorAll('.product-row');
+    rows.forEach(row => {
+        const productName = row.dataset.productName;
+        if (products.includes(productName)) {
+            row.remove();
+        }
+    });
+    updateTableStatus();
 } 
