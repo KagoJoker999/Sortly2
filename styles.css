@@ -708,3 +708,15 @@ tbody tr:hover {
     flex: 1;
     max-width: 45%;
 } 
+
+#clearDatabase {
+    background-color: #FF6B6B;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#clearDatabase:hover {
+    background-color: #FF5252;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+} 
