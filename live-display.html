@@ -133,6 +133,18 @@
         .copy-button:hover {
             background-color: #45a049;
         }
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+            border-top: 1px solid #eee;
+        }
     </style>
 </head>
 <body>
@@ -213,22 +225,32 @@
                         <thead style="display: none;">
                             <tr>
                                 <th>产品名称</th>
+                                <th>产品ID</th>
                                 <th style="display: none;">状态</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${sortedProducts.map(productName => {
+                            ${sortedProducts.map((productName, index) => {
                                 const isHighlighted = highlightedProducts.includes(productName);
                                 const match = productName.match(/「([^」]+)」/);
                                 const displayName = match ? match[1] : productName;
+                                const productId = productName.match(/\[(\d+)\]/) ? productName.match(/\[(\d+)\]/)[1] : '';
+                                
+                                // 每5个产品添加一个空行
+                                const groupSeparator = (index + 1) % 5 === 0 && index !== sortedProducts.length - 1 
+                                    ? '<tr><td colspan="3" style="height: 20px; border: none;"></td></tr>'
+                                    : '';
+                                
                                 return `
                                     <tr class="${isHighlighted ? 'highlighted' : ''} selected">
                                         <td>
                                             ${displayName}
                                             <button class="copy-button" onclick="copyProductName('${displayName}')">复制</button>
                                         </td>
+                                        <td style="color: #666; font-size: 20px;">${productId}</td>
                                         <td style="display: none;">${isHighlighted ? '已选择，已高亮' : '已选择'}</td>
                                     </tr>
+                                    ${groupSeparator}
                                 `;
                             }).join('')}
                         </tbody>
@@ -240,6 +262,9 @@
                 const statusDiv = document.getElementById('status');
                 statusDiv.className = 'status success';
                 statusDiv.textContent = '✅ 数据同步成功 - ' + new Date().toLocaleString();
+
+                // 更新最后计算时间
+                document.getElementById('lastUpdateTime').textContent = '最后计算时间：' + latestStatus.last_update ? new Date(latestStatus.last_update).toLocaleString() : '未知';
 
                 hideManualUpdateButtons(); // 同步成功时隐藏按钮
 
@@ -288,5 +313,8 @@
             }
         }
     </script>
+    <div class="footer">
+        <span id="lastUpdateTime">最后计算时间：未知</span>
+    </div>
 </body>
 </html> 
