@@ -1,12 +1,14 @@
 {
-  "name": "product-ranking",
+  "name": "sortly2",
   "version": "1.0.0",
-  "type": "module",
-  "engines": {
-    "node": ">=18.0.0"
-  },
+  "description": "数据分析平台",
+  "main": "index.js",
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.3",
-    "node-fetch": "^3.3.2"
-  }
+    "xlsx": "^0.18.5"
+  },
+  "scripts": {
+    "start": "serve ."
+  },
+  "author": "",
+  "license": "ISC"
 }

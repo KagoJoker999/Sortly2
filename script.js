@@ -1097,65 +1097,12 @@ function updateTable(tableId, data, limit) {
 }
 
 // 更新表格中的选择和高亮状态
-async function updateTableStatus() {
+function updateTableStatus() {
     try {
-        // 获取当前表格中的所有产品名称
-        const currentProducts = new Set();
-        document.querySelectorAll('.product-row').forEach(row => {
-            currentProducts.add(row.dataset.productName);
-        });
-
-        const response = await fetch('https://ddejqskjoctdtqeqijmn.supabase.co/rest/v1/product_status?select=*', {
-            headers: {
-                'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
-                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM'
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error('获取数据失败: ' + response.statusText);
-        }
-
-        const productStatusList = await response.json();
-        const latestStatus = productStatusList[productStatusList.length - 1];
+        // 从本地存储获取数据
+        const selectedProducts = JSON.parse(localStorage.getItem('selectedProducts') || '[]');
+        const highlightedProducts = JSON.parse(localStorage.getItem('highlightedProducts') || '[]');
         
-        if (!latestStatus) {
-            throw new Error('没有找到产品状态数据');
-        }
-
-        let selectedProducts = latestStatus.selected_products || [];
-        let highlightedProducts = latestStatus.highlighted_products || [];
-        let productScores = latestStatus.product_scores || {};
-
-        // 清理不存在的产品
-        selectedProducts = selectedProducts.filter(name => currentProducts.has(name));
-        highlightedProducts = highlightedProducts.filter(name => currentProducts.has(name));
-
-        // 如果有产品被清理，更新数据库
-        if (selectedProducts.length !== latestStatus.selected_products?.length || 
-            highlightedProducts.length !== latestStatus.highlighted_products?.length) {
-            
-            const updateResponse = await fetch('https://ddejqskjoctdtqeqijmn.supabase.co/rest/v1/product_status', {
-                method: 'POST',
-                headers: {
-                    'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
-                    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
-                    'Content-Type': 'application/json',
-                    'Prefer': 'return=minimal'
-                },
-                body: JSON.stringify({
-                    selected_products: selectedProducts,
-                    highlighted_products: highlightedProducts,
-                    product_scores: productScores,
-                    last_update: new Date().toISOString()
-                })
-            });
-
-            if (!updateResponse.ok) {
-                throw new Error('清理数据失败: ' + updateResponse.statusText);
-            }
-        }
-
         // 更新表格显示
         document.querySelectorAll('.product-row').forEach(row => {
             const productName = row.dataset.productName;
@@ -1178,16 +1125,14 @@ async function updateTableStatus() {
                 row.classList.remove('highlighted-product');
             }
         });
-
-        showToast('数据同步成功', 'success');
     } catch (error) {
-        console.error('同步失败:', error);
-        showToast('更新失败: ' + error.message, 'error');
+        console.error('更新表格状态失败:', error);
+        showToast('更新表格状态失败', 'error');
     }
 }
 
 // 修改产品选择处理函数
-async function handleProductSelection(checkbox) {
+function handleProductSelection(checkbox) {
     const row = checkbox.closest('tr');
     const productName = row.dataset.productName;
     const score = parseFloat(row.querySelector('td:last-child').textContent) || 0;
@@ -1201,7 +1146,6 @@ async function handleProductSelection(checkbox) {
     
     // 更新本地存储中的选中产品列表
     let selectedProducts = JSON.parse(localStorage.getItem('selectedProducts') || '[]');
-    let highlightedProducts = JSON.parse(localStorage.getItem('highlightedProducts') || '[]');
     let productScores = JSON.parse(localStorage.getItem('productScores') || '{}');
     
     if (checkbox.checked && !selectedProducts.includes(productName)) {
@@ -1214,37 +1158,11 @@ async function handleProductSelection(checkbox) {
     
     localStorage.setItem('selectedProducts', JSON.stringify(selectedProducts));
     localStorage.setItem('productScores', JSON.stringify(productScores));
-
-    try {
-        const response = await fetch('https://ddejqskjoctdtqeqijmn.supabase.co/rest/v1/product_status', {
-            method: 'POST',
-            headers: {
-                'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
-                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
-                'Content-Type': 'application/json',
-                'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify({
-                selected_products: selectedProducts,
-                highlighted_products: highlightedProducts,
-                product_scores: productScores,
-                last_update: new Date().toISOString()
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error('更新失败: ' + response.statusText);
-        }
-
-        showToast('数据同步成功', 'success');
-    } catch (error) {
-        console.error('同步失败:', error);
-        showToast('更新失败: ' + error.message, 'error');
-    }
+    showToast('选择已更新', 'success');
 }
 
 // 修改产品高亮处理函数
-async function handleProductHighlight(checkbox) {
+function handleProductHighlight(checkbox) {
     const row = checkbox.closest('tr');
     const productName = row.dataset.productName;
     
@@ -1256,9 +1174,7 @@ async function handleProductHighlight(checkbox) {
     }
     
     // 更新本地存储中的高亮产品列表
-    let selectedProducts = JSON.parse(localStorage.getItem('selectedProducts') || '[]');
     let highlightedProducts = JSON.parse(localStorage.getItem('highlightedProducts') || '[]');
-    let productScores = JSON.parse(localStorage.getItem('productScores') || '{}');
     
     if (checkbox.checked && !highlightedProducts.includes(productName)) {
         highlightedProducts.push(productName);
@@ -1267,33 +1183,26 @@ async function handleProductHighlight(checkbox) {
     }
     
     localStorage.setItem('highlightedProducts', JSON.stringify(highlightedProducts));
+    showToast('高亮已更新', 'success');
+}
 
-    try {
-        const response = await fetch('https://ddejqskjoctdtqeqijmn.supabase.co/rest/v1/product_status', {
-            method: 'POST',
-            headers: {
-                'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
-                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
-                'Content-Type': 'application/json',
-                'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify({
-                selected_products: selectedProducts,
-                highlighted_products: highlightedProducts,
-                product_scores: productScores,
-                last_update: new Date().toISOString()
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error('更新失败: ' + response.statusText);
-        }
-
-        showToast('数据同步成功', 'success');
-    } catch (error) {
-        console.error('同步失败:', error);
-        showToast('更新失败: ' + error.message, 'error');
-    }
+// 清空选择函数
+function clearAllSelections() {
+    // 清空本地存储
+    localStorage.setItem('selectedProducts', '[]');
+    localStorage.setItem('highlightedProducts', '[]');
+    localStorage.setItem('productScores', '{}');
+    
+    // 更新表格显示
+    document.querySelectorAll('.product-row').forEach(row => {
+        row.classList.remove('selected-product', 'highlighted-product');
+        const checkbox = row.querySelector('.select-checkbox');
+        const highlightCheckbox = row.querySelector('.highlight-checkbox');
+        if (checkbox) checkbox.checked = false;
+        if (highlightCheckbox) highlightCheckbox.checked = false;
+    });
+    
+    showToast('已清空所有选择', 'success');
 }
 
 // 排序函数
@@ -1397,27 +1306,6 @@ async function clearAllSelections() {
         localStorage.setItem('selectedProducts', '[]');
         localStorage.setItem('highlightedProducts', '[]');
         localStorage.setItem('productScores', '{}');
-
-        // 更新数据库
-        const response = await fetch('https://ddejqskjoctdtqeqijmn.supabase.co/rest/v1/product_status', {
-            method: 'POST',
-            headers: {
-                'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
-                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkZWpxc2tqb2N0ZHRxZXFpam1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5Njc3OTYsImV4cCI6MjA1MTU0Mzc5Nn0.bJ1YJWc-k26mJDggN9qf8b0Da1vhWJXMonVAbPYtSNM',
-                'Content-Type': 'application/json',
-                'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify({
-                selected_products: [],
-                highlighted_products: [],
-                product_scores: {},
-                last_update: new Date().toISOString()
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error('清空数据失败: ' + response.statusText);
-        }
 
         // 更新表格显示
         document.querySelectorAll('.product-row').forEach(row => {
