@@ -1,2 +1,7 @@
 .vercel
 .env*.local
+.env
+node_modules/
+password.txt
+.DS_Store
+*.log
